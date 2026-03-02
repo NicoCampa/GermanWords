@@ -1,0 +1,32 @@
+# Data files (large, downloaded)
+data/kaikki-german.jsonl
+data/de_50k.txt
+data/dict_index.db
+data/*.jsonl
+data/*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.env
+
+# macOS
+.DS_Store
+.claude/
+
+# Secrets
+Secrets.swift
+*.xcconfig
+aWordaDay/GoogleService-Info.plist
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+aWordaDay.xcodeproj/xcuserdata/
+
+# Local/generated artifacts
+words.db
+generated_words/

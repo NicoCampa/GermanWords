@@ -1,0 +1,16 @@
+# Wordy Word Generator V2 Requirements
+
+# YAML support
+PyYAML>=6.0
+
+# Bloom filter for fast deduplication
+pybloom-live>=4.0.0
+
+# HTTP requests for Ollama API
+requests>=2.31.0
+
+# Optional: Better YAML handling
+ruamel.yaml>=0.18.0
+
+# OpenAI client for text generation
+openai>=1.40.0
