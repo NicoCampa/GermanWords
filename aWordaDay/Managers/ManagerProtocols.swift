@@ -11,9 +11,25 @@ import UserNotifications
 
 // MARK: - Learning Manager Protocol
 protocol LearningManagerProtocol {
-    func selectNextWord(from words: [Word], language: String, lastWord: Word?, preferredDifficulty: Int?, allowMixed: Bool) -> Word?
-    func getNewWordsToLearn(from words: [Word], language: String, limit: Int) -> [Word]
-    func getLearningStats(from words: [Word], language: String) -> LearningStats
+    func selectNextWord(
+        from words: [CatalogWord],
+        statesByID: [String: UserWordStateSnapshot],
+        language: String,
+        lastWordID: String?,
+        preferredDifficulty: Int?,
+        allowMixed: Bool
+    ) -> CatalogWord?
+    func getNewWordsToLearn(
+        from words: [CatalogWord],
+        statesByID: [String: UserWordStateSnapshot],
+        language: String,
+        limit: Int
+    ) -> [CatalogWord]
+    func getLearningStats(
+        from words: [CatalogWord],
+        statesByID: [String: UserWordStateSnapshot],
+        language: String
+    ) -> LearningStats
     func clearHistory()
     func getHistoryCount() -> Int
 }

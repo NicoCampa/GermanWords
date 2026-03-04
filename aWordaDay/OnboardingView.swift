@@ -71,7 +71,7 @@ struct OnboardingView: View {
 
 struct OnboardingWelcomePage: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var userProgress: [UserProgress]
+    @Query private var appStates: [AppState]
 
     @State private var mascotScale: CGFloat = 0.8
     @State private var selectedTargetLanguage: TargetLanguage = .english
@@ -116,33 +116,33 @@ struct OnboardingWelcomePage: View {
                 VStack(spacing: 14) {
                     DifficultyCard(
                         level: 1,
-                        title: L10n.Difficulty.beginner,
+                        title: L10n.Difficulty.easy,
                         iconColor: DesignTokens.color.difficultyEasy,
-                        cefrLevels: "A1-A2",
-                        description: L10n.Difficulty.commonEverydayWords,
-                        exampleWords: ["Hallo", "Danke", "Guten Morgen"],
+                        levelSummary: DifficultyBucket.easy.levelSummary,
+                        description: DifficultyBucket.easy.description,
+                        exampleWords: DifficultyBucket.easy.exampleWords,
                         isSelected: selectedDifficulty == 1,
                         onTap: { selectedDifficulty = 1 }
                     )
 
                     DifficultyCard(
                         level: 2,
-                        title: L10n.Difficulty.intermediate,
+                        title: L10n.Difficulty.medium,
                         iconColor: DesignTokens.color.difficultyMedium,
-                        cefrLevels: "B1-B2",
-                        description: L10n.Difficulty.moderateVocab,
-                        exampleWords: ["Obwohl", "Außerdem", "Trotzdem"],
+                        levelSummary: DifficultyBucket.medium.levelSummary,
+                        description: DifficultyBucket.medium.description,
+                        exampleWords: DifficultyBucket.medium.exampleWords,
                         isSelected: selectedDifficulty == 2,
                         onTap: { selectedDifficulty = 2 }
                     )
 
                     DifficultyCard(
                         level: 3,
-                        title: L10n.Difficulty.advanced,
+                        title: L10n.Difficulty.hard,
                         iconColor: DesignTokens.color.difficultyHard,
-                        cefrLevels: "C1-C2",
-                        description: L10n.Difficulty.complexTerms,
-                        exampleWords: ["Gleichwohl", "Gegebenheit"],
+                        levelSummary: DifficultyBucket.hard.levelSummary,
+                        description: DifficultyBucket.hard.description,
+                        exampleWords: DifficultyBucket.hard.exampleWords,
                         isSelected: selectedDifficulty == 3,
                         onTap: { selectedDifficulty = 3 }
                     )
@@ -254,7 +254,7 @@ struct OnboardingWelcomePage: View {
     }
 
     private func saveDifficultyPreference() {
-        guard let progress = userProgress.first else { return }
+        let progress = AppState.current(in: modelContext, cached: appStates)
         progress.preferredDifficultyLevel = selectedDifficulty
         progress.allowMixedDifficulty = allowMixed
         progress.targetLanguage = selectedTargetLanguage
@@ -306,30 +306,30 @@ struct OnboardingFeaturesPage: View {
                 .offset(y: showFeatures ? 0 : 20)
 
                 OnboardingFeatureRow(
-                    icon: "gamecontroller.fill",
+                    icon: "sparkles",
                     iconColor: DesignTokens.color.success,
-                    title: L10n.Onboarding.funGames,
-                    description: L10n.Onboarding.funGamesDesc
+                    title: L10n.Onboarding.smartReview,
+                    description: L10n.Onboarding.smartReviewDesc
                 )
                 .opacity(showFeatures ? 1 : 0)
                 .offset(y: showFeatures ? 0 : 20)
                 .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1), value: showFeatures)
 
                 OnboardingFeatureRow(
-                    icon: "bubble.left.and.bubble.right.fill",
+                    icon: "text.magnifyingglass",
                     iconColor: DesignTokens.color.info,
-                    title: L10n.Onboarding.aiTutor,
-                    description: L10n.Onboarding.aiTutorDesc
+                    title: L10n.Onboarding.browseLibrary,
+                    description: L10n.Onboarding.browseLibraryDesc
                 )
                 .opacity(showFeatures ? 1 : 0)
                 .offset(y: showFeatures ? 0 : 20)
                 .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: showFeatures)
 
                 OnboardingFeatureRow(
-                    icon: "widget.small",
+                    icon: "sparkle.magnifyingglass",
                     iconColor: DesignTokens.color.warning,
-                    title: L10n.Onboarding.homeWidget,
-                    description: L10n.Onboarding.homeWidgetDesc
+                    title: L10n.Onboarding.funGames,
+                    description: L10n.Onboarding.funGamesDesc
                 )
                 .opacity(showFeatures ? 1 : 0)
                 .offset(y: showFeatures ? 0 : 20)

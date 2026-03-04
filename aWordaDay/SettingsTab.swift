@@ -10,10 +10,10 @@ import SwiftData
 
 struct SettingsTab: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var userProgress: [UserProgress]
+    @Query private var appStates: [AppState]
 
-    private var currentProgress: UserProgress {
-        UserProgress.current(in: modelContext, cached: userProgress)
+    private var currentProgress: AppState {
+        AppState.current(in: modelContext, cached: appStates)
     }
 
     var body: some View {
@@ -27,5 +27,5 @@ struct SettingsTab: View {
 
 #Preview {
     SettingsTab()
-        .modelContainer(for: [Word.self, UserProgress.self, ChatHistoryMessage.self], inMemory: true)
+        .modelContainer(for: [AppState.self, UserWordState.self], inMemory: true)
 }

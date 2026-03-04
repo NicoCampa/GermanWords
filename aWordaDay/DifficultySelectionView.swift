@@ -36,33 +36,33 @@ struct DifficultySelectionView: View {
             VStack(spacing: 16) {
                 DifficultyCard(
                     level: 1,
-                    title: L10n.Difficulty.beginner,
+                    title: L10n.Difficulty.easy,
                     iconColor: DesignTokens.color.difficultyEasy,
-                    cefrLevels: "A1-A2",
-                    description: L10n.Difficulty.commonEverydayWords,
-                    exampleWords: ["Hallo", "Danke", "Guten Morgen"],
+                    levelSummary: DifficultyBucket.easy.levelSummary,
+                    description: DifficultyBucket.easy.description,
+                    exampleWords: DifficultyBucket.easy.exampleWords,
                     isSelected: selectedDifficulty == 1,
                     onTap: { selectedDifficulty = 1 }
                 )
 
                 DifficultyCard(
                     level: 2,
-                    title: L10n.Difficulty.intermediate,
+                    title: L10n.Difficulty.medium,
                     iconColor: DesignTokens.color.difficultyMedium,
-                    cefrLevels: "B1-B2",
-                    description: L10n.Difficulty.moderateVocab,
-                    exampleWords: ["Obwohl", "Außerdem", "Trotzdem"],
+                    levelSummary: DifficultyBucket.medium.levelSummary,
+                    description: DifficultyBucket.medium.description,
+                    exampleWords: DifficultyBucket.medium.exampleWords,
                     isSelected: selectedDifficulty == 2,
                     onTap: { selectedDifficulty = 2 }
                 )
 
                 DifficultyCard(
                     level: 3,
-                    title: L10n.Difficulty.advanced,
+                    title: L10n.Difficulty.hard,
                     iconColor: DesignTokens.color.difficultyHard,
-                    cefrLevels: "C1-C2",
-                    description: L10n.Difficulty.complexTerms,
-                    exampleWords: ["Gleichwohl", "Gegebenheit", "Auseinandersetzung"],
+                    levelSummary: DifficultyBucket.hard.levelSummary,
+                    description: DifficultyBucket.hard.description,
+                    exampleWords: DifficultyBucket.hard.exampleWords,
                     isSelected: selectedDifficulty == 3,
                     onTap: { selectedDifficulty = 3 }
                 )
@@ -157,7 +157,7 @@ struct DifficultyCard: View {
     let level: Int
     let title: String
     let iconColor: Color
-    let cefrLevels: String
+    let levelSummary: String
     let description: String
     let exampleWords: [String]
     let isSelected: Bool
@@ -177,7 +177,7 @@ struct DifficultyCard: View {
                             .font(DesignTokens.typography.headline(weight: .bold))
                             .foregroundStyle(DesignTokens.color.textPrimary)
 
-                        Text("CEFR \(cefrLevels)")
+                        Text(levelSummary)
                             .font(DesignTokens.typography.footnote(weight: .semibold))
                             .foregroundStyle(DesignTokens.color.textLight)
                     }

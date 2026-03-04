@@ -16,96 +16,72 @@ extension ContentView {
         let fraction = Double(xpIntoCurrentLevel) / Double(xpNeededForNext)
 
         return Button(action: { activeSheet = .stats }) {
-            VStack(spacing: 0) {
-                // Top row: Streak + Mascot
-                HStack(spacing: 20) {
-                    HStack(spacing: 16) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundStyle(currentProgress.currentStreak > 0 ? DesignTokens.color.flame : DesignTokens.color.textMuted)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Today")
+                            .font(DesignTokens.typography.footnote(weight: .bold))
+                            .foregroundStyle(DesignTokens.color.textMuted)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("\(currentProgress.currentStreak)")
-                                .font(DesignTokens.typography.largeTitle(weight: .bold))
-                                .foregroundStyle(DesignTokens.color.headingPrimary)
-
-                            Text("day streak")
-                                .font(DesignTokens.typography.caption(weight: .semibold))
-                                .foregroundStyle(DesignTokens.color.textLight)
-                        }
+                        Text("Learning progress")
+                            .font(DesignTokens.typography.headline(weight: .bold))
+                            .foregroundStyle(DesignTokens.color.headingPrimary)
                     }
 
-                    Spacer()
+                    Spacer(minLength: 0)
 
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        DesignTokens.color.backgroundLight,
-                                        DesignTokens.color.cardBackground
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 70, height: 70)
-                            .shadow(color: DesignTokens.color.primary.opacity(0.08), radius: 8, x: 0, y: 4)
-                        SharedCloudMascot(scale: 0.7)
-                            .frame(width: 68, height: 68)
-                    }
+                    SharedCloudMascot(scale: 0.42)
+                        .frame(width: 38, height: 38)
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color(red: 0.94, green: 0.97, blue: 1.0))
+                        )
                 }
-                .padding(20)
 
-                // Divider
-                Rectangle()
-                    .fill(DesignTokens.color.textMuted.opacity(0.15))
-                    .frame(height: 1)
-                    .padding(.horizontal, 20)
+                HStack(spacing: 10) {
+                    compactMetric(
+                        icon: "flame.fill",
+                        value: "\(currentProgress.currentStreak)",
+                        label: L10n.Stats.dayStreak,
+                        iconColor: currentProgress.currentStreak > 0 ? DesignTokens.color.flame : DesignTokens.color.textMuted
+                    )
 
-                // Bottom row: Level + XP + Progress
-                VStack(spacing: 10) {
-                    HStack(spacing: 0) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(DesignTokens.color.levelBlue)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Level \(currentProgress.currentLevel)")
-                                    .font(DesignTokens.typography.callout(weight: .bold))
-                                    .foregroundStyle(DesignTokens.color.headingPrimary)
-                            }
-                        }
+                    compactMetric(
+                        icon: "star.fill",
+                        value: "\(currentProgress.currentLevel)",
+                        label: L10n.Stats.level,
+                        iconColor: DesignTokens.color.levelBlue
+                    )
 
-                        Spacer()
-
-                        HStack(spacing: 8) {
-                            Image(systemName: "bolt.fill")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(DesignTokens.color.xpGold)
-                            Text("\(currentProgress.totalXP) XP")
-                                .font(DesignTokens.typography.callout(weight: .bold))
-                                .foregroundStyle(DesignTokens.color.headingPrimary)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        ProgressView(value: min(max(fraction, 0), 1))
-                            .progressViewStyle(LinearProgressViewStyle(tint: DesignTokens.color.progressTint))
-
-                        Text("\(xpIntoCurrentLevel) / \(xpNeededForNext) XP to level \(currentProgress.currentLevel + 1)")
-                            .font(DesignTokens.typography.caption())
-                            .foregroundStyle(DesignTokens.color.textLight)
-                    }
+                    compactMetric(
+                        icon: "bolt.fill",
+                        value: "\(currentProgress.totalXP)",
+                        label: L10n.Stats.xp,
+                        iconColor: DesignTokens.color.xpGold
+                    )
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 14)
-                .padding(.bottom, 16)
+
+                VStack(alignment: .leading, spacing: 7) {
+                    ProgressView(value: min(max(fraction, 0), 1))
+                        .tint(DesignTokens.color.progressTint)
+                        .background(Color(red: 0.9, green: 0.94, blue: 0.99), in: Capsule())
+
+                    Text("\(xpIntoCurrentLevel) / \(xpNeededForNext) XP to level \(currentProgress.currentLevel + 1)")
+                        .font(DesignTokens.typography.caption(weight: .semibold))
+                        .foregroundStyle(DesignTokens.color.textSecondary)
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(DesignTokens.color.cardBackground)
-                    .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 6)
+                    .fill(Color.white.opacity(0.88))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.white.opacity(0.95), lineWidth: 1)
+                    )
+                    .shadow(color: Color(red: 0.16, green: 0.28, blue: 0.54).opacity(0.08), radius: 18, x: 0, y: 10)
             )
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Streak: \(currentProgress.currentStreak) days, Level \(currentProgress.currentLevel), \(currentProgress.totalXP) XP")
@@ -114,4 +90,29 @@ extension ContentView {
         .padding(.horizontal, 20)
     }
 
+    private func compactMetric(icon: String, value: String, label: String, iconColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(iconColor)
+                .frame(width: 28, height: 28)
+                .background(iconColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            Text(value)
+                .font(DesignTokens.typography.headline(weight: .bold))
+                .foregroundStyle(DesignTokens.color.headingPrimary)
+
+            Text(label)
+                .font(DesignTokens.typography.caption(weight: .semibold))
+                .foregroundStyle(DesignTokens.color.textMuted)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(red: 0.97, green: 0.98, blue: 1.0))
+        )
+    }
 }

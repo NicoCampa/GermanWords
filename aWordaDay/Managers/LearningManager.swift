@@ -6,25 +6,31 @@
 //
 
 import Foundation
-import SwiftData
 
 class LearningManager: LearningManagerProtocol {
     static let shared = LearningManager()
 
     // Track recently shown words to avoid repetition
     private var recentlyShownWords: [String] = []
+    private var recentlyShownWordIDs: Set<String> = []
     private let maxRecentHistory = 20 // Remember last 20 words
 
     private init() {
         self.recentlyShownWords = UserDefaults.standard.stringArray(forKey: "recentlyShownWordIds") ?? []
+        self.recentlyShownWordIDs = Set(recentlyShownWords)
     }
 
     // MARK: - Word Selection
 
     /// Gets new words to learn (never seen before)
-    func getNewWordsToLearn(from words: [Word], language: String, limit: Int = 5) -> [Word] {
+    func getNewWordsToLearn(
+        from words: [CatalogWord],
+        statesByID: [String: UserWordStateSnapshot],
+        language: String,
+        limit: Int = 5
+    ) -> [CatalogWord] {
         let languageWords = words.filter { $0.sourceLanguage == language }
-        let newWords = languageWords.filter { $0.timesViewed == 0 }
+        let newWords = languageWords.filter { (statesByID[$0.id]?.reviewCount ?? 0) == 0 }
 
         // Sort new words by difficulty (easier first for beginners)
         let sortedWords = newWords.sorted { $0.difficultyLevel < $1.difficultyLevel }
@@ -35,12 +41,16 @@ class LearningManager: LearningManagerProtocol {
     // MARK: - Learning Analytics
 
     /// Calculates learning statistics for the user
-    func getLearningStats(from words: [Word], language: String) -> LearningStats {
+    func getLearningStats(
+        from words: [CatalogWord],
+        statesByID: [String: UserWordStateSnapshot],
+        language: String
+    ) -> LearningStats {
         let languageWords = words.filter { $0.sourceLanguage == language }
 
         let totalWords = languageWords.count
-        let reviewedWords = languageWords.filter { $0.timesViewed > 0 }.count
-        let learnedWords = languageWords.filter { $0.isLearned }.count
+        let reviewedWords = languageWords.filter { (statesByID[$0.id]?.reviewCount ?? 0) > 0 }.count
+        let learnedWords = languageWords.filter { statesByID[$0.id]?.isLearned == true }.count
 
         return LearningStats(
             totalWords: totalWords,
@@ -52,70 +62,120 @@ class LearningManager: LearningManagerProtocol {
     // MARK: - Smart Word Selection
 
     /// Selects the best word to show next based on learning algorithm with anti-repetition
-    func selectNextWord(from words: [Word], language: String, lastWord: Word? = nil, preferredDifficulty: Int? = nil, allowMixed: Bool = false) -> Word? {
-        // Filter by language
-        var languageWords = words.filter { $0.sourceLanguage == language }
+    func selectNextWord(
+        from words: [CatalogWord],
+        statesByID: [String: UserWordStateSnapshot],
+        language: String,
+        lastWordID: String? = nil,
+        preferredDifficulty: Int? = nil,
+        allowMixed: Bool = false
+    ) -> CatalogWord? {
+        var filteredWords: [CatalogWord] = []
+        filteredWords.reserveCapacity(words.count)
 
-        // Apply difficulty filter if preference is set
-        if let difficulty = preferredDifficulty, !allowMixed {
-            // Allow ±1 difficulty for variety while staying within user's comfort zone
-            languageWords = languageWords.filter { word in
-                abs(word.difficultyLevel - difficulty) <= 1
+        for word in words {
+            guard word.sourceLanguage == language else { continue }
+            if let difficulty = preferredDifficulty,
+               !allowMixed,
+               let selectedBucket = DifficultyBucket(selection: difficulty),
+               word.difficultyBucket != selectedBucket {
+                continue
             }
+            filteredWords.append(word)
         }
 
-        if languageWords.isEmpty {
+        if filteredWords.isEmpty {
             return nil
         }
 
         // Add last word to history if provided
-        if let lastWord = lastWord {
-            addToHistory(lastWord.id)
+        if let lastWordID {
+            addToHistory(lastWordID)
         }
 
-        // Exclude recently shown words to avoid repetition
-        let availableWords = languageWords.filter { word in
-            !recentlyShownWords.contains(word.id)
+        var nonRecentWords: [CatalogWord] = []
+        nonRecentWords.reserveCapacity(filteredWords.count)
+        for word in filteredWords where !recentlyShownWordIDs.contains(word.id) {
+            nonRecentWords.append(word)
         }
 
-        // If we've exhausted all words (shown them all recently), reset history and use all words
-        let wordsToChooseFrom = availableWords.isEmpty ? languageWords : availableWords
+        let wordsToChooseFrom = nonRecentWords.isEmpty ? filteredWords : nonRecentWords
 
-        // Strategy 0: Prioritize words due for spaced-repetition review.
-        let dueWords = wordsToChooseFrom.filter { $0.isDueForReview }
+        var dueWords: [CatalogWord] = []
+        var newWords: [CatalogWord] = []
+        var lessViewedWords: [CatalogWord] = []
+
+        for word in wordsToChooseFrom {
+            let state = statesByID[word.id]
+
+            if state?.isDueForReview == true {
+                dueWords.append(word)
+                continue
+            }
+
+            if (state?.reviewCount ?? 0) == 0 {
+                newWords.append(word)
+                continue
+            }
+
+            if (state?.reviewCount ?? 0) < 3 {
+                lessViewedWords.append(word)
+            }
+        }
+
         if !dueWords.isEmpty {
             return selectFromCandidates(
                 dueWords,
                 sortedBy: { lhs, rhs in
-                    (lhs.srsDueDate ?? .distantFuture) < (rhs.srsDueDate ?? .distantFuture)
+                    let lhsDue = statesByID[lhs.id]?.srsDueDate ?? .distantFuture
+                    let rhsDue = statesByID[rhs.id]?.srsDueDate ?? .distantFuture
+                    return lhsDue < rhsDue
                 },
                 poolSize: 3
             )
         }
 
-        // Strategy 1: New words (never viewed) - prioritize easier ones
-        let newWords = wordsToChooseFrom.filter { $0.timesViewed == 0 }
         if !newWords.isEmpty {
-            return selectFromCandidates(newWords, sortedBy: { $0.difficultyLevel < $1.difficultyLevel })
+            return selectFromCandidates(newWords, sortedBy: {
+                $0.difficultyBucket.rawValue < $1.difficultyBucket.rawValue
+            })
         }
 
-        // Strategy 2: Words that haven't been viewed much
-        let lessViewedWords = wordsToChooseFrom.filter { $0.timesViewed < 3 }
         if !lessViewedWords.isEmpty {
-            return selectFromCandidates(lessViewedWords, sortedBy: { $0.timesViewed < $1.timesViewed })
+            return selectFromCandidates(lessViewedWords, sortedBy: {
+                (statesByID[$0.id]?.reviewCount ?? 0) < (statesByID[$1.id]?.reviewCount ?? 0)
+            })
         }
 
         // Strategy 3: Any available word, prioritize least viewed
-        return selectFromCandidates(wordsToChooseFrom, sortedBy: { $0.timesViewed < $1.timesViewed })
+        return selectFromCandidates(wordsToChooseFrom, sortedBy: {
+            (statesByID[$0.id]?.reviewCount ?? 0) < (statesByID[$1.id]?.reviewCount ?? 0)
+        })
     }
 
     /// Helper method to select from candidates with smart randomization
     /// Takes top candidates and randomly picks one to add variety
-    private func selectFromCandidates(_ candidates: [Word], sortedBy areInIncreasingOrder: (Word, Word) -> Bool, poolSize requestedPoolSize: Int = 5) -> Word? {
+    private func selectFromCandidates(
+        _ candidates: [CatalogWord],
+        sortedBy areInIncreasingOrder: (CatalogWord, CatalogWord) -> Bool,
+        poolSize requestedPoolSize: Int = 5
+    ) -> CatalogWord? {
         guard !candidates.isEmpty else { return nil }
 
-        // Sort by priority
-        let sorted = candidates.sorted(by: areInIncreasingOrder)
+        // Shuffle first, then keep that randomized order for equal-priority candidates.
+        let shuffledCandidates = candidates.shuffled()
+        let sorted = shuffledCandidates
+            .enumerated()
+            .sorted { lhs, rhs in
+                if areInIncreasingOrder(lhs.element, rhs.element) {
+                    return true
+                }
+                if areInIncreasingOrder(rhs.element, lhs.element) {
+                    return false
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
 
         // Use weighted random selection from top candidates
         // This adds variety while still prioritizing important words
@@ -142,10 +202,12 @@ class LearningManager: LearningManagerProtocol {
     /// Add a word to the recently shown history
     private func addToHistory(_ wordId: String) {
         recentlyShownWords.append(wordId)
+        recentlyShownWordIDs.insert(wordId)
 
         // Keep only the most recent N words
         if recentlyShownWords.count > maxRecentHistory {
             recentlyShownWords.removeFirst(recentlyShownWords.count - maxRecentHistory)
+            recentlyShownWordIDs = Set(recentlyShownWords)
         }
         persistHistory()
     }
@@ -157,6 +219,7 @@ class LearningManager: LearningManagerProtocol {
     /// Clear the history (useful when changing language or resetting)
     func clearHistory() {
         recentlyShownWords.removeAll()
+        recentlyShownWordIDs.removeAll()
         persistHistory()
     }
 

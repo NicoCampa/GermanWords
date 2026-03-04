@@ -43,7 +43,7 @@ extension ContentView {
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isActive)
     }
 
-    func usageSummary(for word: Word) -> String {
+    func usageSummary<WordType: WordDisplayable>(for word: WordType) -> String {
         let trimmed = word.localizedUsageNotes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? word.localizedTranslation : trimmed
     }
@@ -84,7 +84,7 @@ extension ContentView {
         )
     }
 
-    func metadataItems(for word: Word) -> [MetadataChip] {
+    func metadataItems<WordType: WordDisplayable>(for word: WordType) -> [MetadataChip] {
         var items: [MetadataChip] = []
         let nounColor = genderColor(for: word)
 
@@ -96,9 +96,7 @@ extension ContentView {
             items.append(MetadataChip(icon: "person.crop.square", text: gender, tint: nounColor ?? DesignTokens.color.interactiveBlue))
         }
 
-        if let difficulty = difficultyLabel(for: word.difficultyLevel) {
-            items.append(MetadataChip(icon: "chart.bar", text: difficulty, tint: DesignTokens.color.learningGreen))
-        }
+        items.append(MetadataChip(icon: "chart.bar", text: word.displayDifficulty, tint: DesignTokens.color.learningGreen))
 
         if let partOfSpeech = word.partOfSpeech?.capitalized, !partOfSpeech.isEmpty {
             items.append(MetadataChip(icon: "textformat", text: partOfSpeech, tint: DesignTokens.color.textSubtle))
@@ -124,7 +122,7 @@ extension ContentView {
         return trimmed
     }
 
-    func genderColor(for word: Word) -> Color? {
+    func genderColor<WordType: WordDisplayable>(for word: WordType) -> Color? {
         guard isNoun(word) else { return nil }
         let gender = word.gender?.lowercased() ?? inferredGender(from: word.displayArticle)
         switch gender {
@@ -182,16 +180,16 @@ extension ContentView {
         )
     }
 
-    func isNoun(_ word: Word) -> Bool {
+    func isNoun<WordType: WordDisplayable>(_ word: WordType) -> Bool {
         word.partOfSpeech?.lowercased().contains("noun") == true || word.displayArticle != nil
     }
 
-    func isVerb(_ word: Word) -> Bool {
+    func isVerb<WordType: WordDisplayable>(_ word: WordType) -> Bool {
         word.partOfSpeech?.lowercased().contains("verb") == true
     }
 
     @ViewBuilder
-    func relatedWordsCard(for word: Word) -> some View {
+    func relatedWordsCard<WordType: WordDisplayable>(for word: WordType) -> some View {
         let accent = DesignTokens.color.relatedAccent
         let hasContent = (word.plural?.isEmpty == false)
             || !word.relatedWords.isEmpty
@@ -251,15 +249,6 @@ extension ContentView {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 2)
-    }
-
-    func difficultyLabel(for level: Int) -> String? {
-        switch level {
-        case 1: return "Easy"
-        case 2: return "Intermediate"
-        case 3: return "Advanced"
-        default: return nil
-        }
     }
 
 }

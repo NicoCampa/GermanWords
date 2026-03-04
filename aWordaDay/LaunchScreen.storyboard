@@ -16,24 +16,26 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Worty" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="1" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="YES" translatesAutoresizingMaskIntoConstraints="NO" id="TitleLabel">
-                                <fontDescription key="fontDescription" type="system" pointSize="34" weight="heavy"/>
-                                <color key="textColor" red="0.145" green="0.235" blue="0.524" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                            </label>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Nicolò Campagnoli apps" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="1" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="YES" translatesAutoresizingMaskIntoConstraints="NO" id="CreditLabel">
-                                <fontDescription key="fontDescription" type="system" pointSize="15" weight="medium"/>
-                                <color key="textColor" systemColor="secondaryLabelColor"/>
-                            </label>
+                            <stackView opaque="NO" contentMode="scaleToFill" axis="horizontal" alignment="center" spacing="5" translatesAutoresizingMaskIntoConstraints="NO" id="CreditStack">
+                                <subviews>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Nicolò Campagnoli" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="1" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="YES" translatesAutoresizingMaskIntoConstraints="NO" id="CreditNameLabel">
+                                        <fontDescription key="fontDescription" type="system" pointSize="17" weight="semibold"/>
+                                        <color key="textColor" systemColor="secondaryLabelColor"/>
+                                    </label>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="apps" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="1" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="YES" translatesAutoresizingMaskIntoConstraints="NO" id="CreditAppsLabel">
+                                        <fontDescription key="fontDescription" type="system" pointSize="18" weight="bold"/>
+                                        <color key="textColor" systemColor="systemBlueColor"/>
+                                    </label>
+                                </subviews>
+                            </stackView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="LaunchSafeArea"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="TitleLabel" firstAttribute="centerX" secondItem="LaunchSafeArea" secondAttribute="centerX" id="TitleCenterX"/>
-                            <constraint firstItem="TitleLabel" firstAttribute="centerY" secondItem="LaunchSafeArea" secondAttribute="centerY" constant="-10" id="TitleCenterY"/>
-                            <constraint firstItem="CreditLabel" firstAttribute="top" secondItem="TitleLabel" secondAttribute="bottom" constant="10" id="CreditTop"/>
-                            <constraint firstItem="CreditLabel" firstAttribute="centerX" secondItem="LaunchSafeArea" secondAttribute="centerX" id="CreditCenterX"/>
-                            <constraint firstItem="CreditLabel" firstAttribute="leading" secondItem="LaunchSafeArea" secondAttribute="leading" constant="32" id="CreditLeading"/>
-                            <constraint firstItem="LaunchSafeArea" firstAttribute="trailing" secondItem="CreditLabel" secondAttribute="trailing" constant="32" id="CreditTrailing"/>
+                            <constraint firstItem="CreditStack" firstAttribute="centerX" secondItem="LaunchSafeArea" secondAttribute="centerX" id="CreditCenterX"/>
+                            <constraint firstItem="CreditStack" firstAttribute="centerY" secondItem="LaunchSafeArea" secondAttribute="centerY" constant="-28" id="CreditCenterY"/>
+                            <constraint firstItem="CreditStack" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="LaunchSafeArea" secondAttribute="leading" constant="32" id="CreditLeading"/>
+                            <constraint firstItem="LaunchSafeArea" firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="CreditStack" secondAttribute="trailing" constant="32" id="CreditTrailing"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -44,6 +46,9 @@
     <resources>
         <systemColor name="secondaryLabelColor">
             <color white="0.23529411759999999" alpha="0.6" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+        <systemColor name="systemBlueColor">
+            <color red="0.0" green="0.47843137250000001" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>

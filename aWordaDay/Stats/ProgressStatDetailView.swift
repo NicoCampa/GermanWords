@@ -143,7 +143,7 @@ struct ProgressStatDetailView: View {
 
     private var streakSection: some View {
         VStack(spacing: 16) {
-            CompactStreakWidget(
+            CompactStreakCard(
                 currentStreak: progress.currentStreak,
                 longestStreak: progress.longestStreak,
                 weeklyProgress: progress.weeklyProgress,

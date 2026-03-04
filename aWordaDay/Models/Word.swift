@@ -281,16 +281,7 @@ extension Word {
 
     /// Display text for difficulty - shows CEFR level if available, otherwise Easy/Medium/Hard
     var displayDifficulty: String {
-        if let cefrLevel = cefrLevel, !cefrLevel.isEmpty {
-            return cefrLevel.uppercased()
-        }
-
-        switch difficultyLevel {
-        case 1: return L10n.Difficulty.easy
-        case 2: return L10n.Difficulty.medium
-        case 3: return L10n.Difficulty.hard
-        default: return L10n.Difficulty.easy
-        }
+        DifficultyBucket.from(cefrLevel: cefrLevel, fallbackDifficultyLevel: difficultyLevel).title
     }
 
     var displayWord: String {

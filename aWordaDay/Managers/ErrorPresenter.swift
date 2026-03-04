@@ -17,20 +17,11 @@ final class ErrorPresenter: ErrorPresenterProtocol {
     private init() {}
 
     func present(_ error: Error, context: String = "") {
-        let appError: AppError
-        if let geminiError = error as? GeminiError {
-            appError = AppError(
-                title: L10n.System.aiServiceError,
-                message: geminiError.localizedDescription,
-                context: context
-            )
-        } else {
-            appError = AppError(
-                title: L10n.System.somethingWentWrong,
-                message: error.localizedDescription,
-                context: context
-            )
-        }
+        let appError = AppError(
+            title: L10n.System.somethingWentWrong,
+            message: error.localizedDescription,
+            context: context
+        )
 
         DispatchQueue.main.async { [weak self] in
             self?.currentError = appError

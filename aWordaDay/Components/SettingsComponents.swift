@@ -4,11 +4,11 @@ import UserNotifications
 
 // MARK: - Settings View
 struct SettingsView: View {
-    let currentProgress: UserProgress
+    let currentProgress: AppState
     let modelContext: ModelContext
     var isEmbedded: Bool = false
     @Environment(\.dismiss) private var dismiss
-    @Query private var words: [Word]
+    @Environment(\.openURL) private var openURL
     @State private var notificationManager = NotificationManager.shared
 
     @State private var showingNotificationSettings = false
@@ -16,14 +16,6 @@ struct SettingsView: View {
     @State private var showingLanguagePicker = false
     @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
     @State private var hasScheduledReminder = false
-    
-    private var availableWords: [Word] {
-        words.filter { $0.sourceLanguage == AppLanguage.sourceCode }
-    }
-    
-    private var favoriteWordsCount: Int {
-        words.filter { $0.isFavorite && $0.sourceLanguage == AppLanguage.sourceCode }.count
-    }
 
     private var currentLanguageLabel: String {
         let language = currentProgress.targetLanguage
@@ -46,9 +38,7 @@ struct SettingsView: View {
     }
 
     private var appVersionText: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
-        return build.isEmpty ? version : "\(version) (\(build))"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
     }
     
     var body: some View {
@@ -74,8 +64,6 @@ struct SettingsView: View {
 
                 ScrollView {
                     VStack(spacing: DesignTokens.spacing.lg2) {
-                        overviewCard
-                        progressCard
                         learningCard
                         remindersCard
                         aboutCard
@@ -120,98 +108,6 @@ struct SettingsView: View {
                 modelContext: modelContext,
                 onDismiss: { showingLanguagePicker = false }
             )
-        }
-    }
-
-    private var overviewCard: some View {
-        SettingsCard {
-            VStack(alignment: .leading, spacing: DesignTokens.spacing.lg2) {
-                HStack(alignment: .top, spacing: DesignTokens.spacing.lg) {
-                    SettingsRowIcon(systemName: "text.book.closed.fill", tint: DesignTokens.color.accentBlue, size: 54)
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Worty")
-                            .font(DesignTokens.typography.largeTitle(weight: .bold))
-                            .foregroundStyle(DesignTokens.color.headingPrimary)
-
-                        Text("\(AppLanguage.flagEmoji) \(AppLanguage.displayName)")
-                            .font(DesignTokens.typography.callout(weight: .semibold))
-                            .foregroundStyle(DesignTokens.color.textSecondary)
-                    }
-
-                    Spacer(minLength: DesignTokens.spacing.md)
-
-                    SettingsPill(
-                        text: reminderEnabled ? L10n.Common.enabled : L10n.Common.disabled,
-                        tint: reminderEnabled ? DesignTokens.color.success : DesignTokens.color.textMuted
-                    )
-                }
-
-                HStack(spacing: DesignTokens.spacing.sm) {
-                    SettingsPill(text: currentLanguageLabel, tint: DesignTokens.color.translationBlue)
-                    SettingsPill(text: getDifficultyDisplayName(), tint: DesignTokens.color.learningGreen)
-                }
-
-                HStack(spacing: DesignTokens.spacing.md) {
-                    SettingsStatTile(
-                        value: "\(currentProgress.currentStreak)",
-                        label: L10n.Progress.streakTitle,
-                        tint: DesignTokens.color.flame,
-                        icon: "flame.fill"
-                    )
-                    SettingsStatTile(
-                        value: "\(currentProgress.currentLevel)",
-                        label: L10n.Progress.levelTitle,
-                        tint: DesignTokens.color.levelBlue,
-                        icon: "star.fill"
-                    )
-                    SettingsStatTile(
-                        value: "\(currentProgress.totalWordsLearned)",
-                        label: L10n.Progress.wordsLearnedTitle,
-                        tint: DesignTokens.color.learningGreen,
-                        icon: "checkmark.seal.fill"
-                    )
-                }
-            }
-        }
-    }
-
-    private var progressCard: some View {
-        SettingsCard {
-            VStack(alignment: .leading, spacing: DesignTokens.spacing.lg) {
-                sectionTitle(
-                    title: L10n.Settings.progress,
-                    icon: "chart.line.uptrend.xyaxis",
-                    tint: DesignTokens.color.interactiveBlue
-                )
-
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DesignTokens.spacing.md), count: 2), spacing: DesignTokens.spacing.md) {
-                    SettingsMetricTile(
-                        title: L10n.Settings.wordsAvailable,
-                        value: "\(availableWords.count)",
-                        icon: "books.vertical.fill",
-                        tint: DesignTokens.color.accentBlue
-                    )
-                    SettingsMetricTile(
-                        title: L10n.Settings.favorites,
-                        value: "\(favoriteWordsCount)",
-                        icon: "heart.fill",
-                        tint: DesignTokens.color.highlight
-                    )
-                    SettingsMetricTile(
-                        title: L10n.Progress.weeklyGoal,
-                        value: "\(currentProgress.weeklyProgress)/\(currentProgress.weeklyGoal)",
-                        icon: "calendar",
-                        tint: DesignTokens.color.success
-                    )
-                    SettingsMetricTile(
-                        title: L10n.Stats.xp,
-                        value: "\(currentProgress.totalXP)",
-                        icon: "sparkles",
-                        tint: DesignTokens.color.levelBlue
-                    )
-                }
-            }
         }
     }
 
@@ -295,6 +191,18 @@ struct SettingsView: View {
                         title: L10n.Settings.appVersion,
                         value: appVersionText
                     )
+
+                    SettingsNavigationRow(
+                        icon: "envelope.fill",
+                        tint: DesignTokens.color.accentBlue,
+                        title: L10n.Settings.contactDeveloper,
+                        subtitle: "nicolocampagnoli20@icloud.com",
+                        value: nil,
+                        action: {
+                            guard let url = URL(string: "mailto:nicolocampagnoli20@icloud.com") else { return }
+                            openURL(url)
+                        }
+                    )
                 }
             }
         }
@@ -340,7 +248,7 @@ struct SettingsView: View {
     }
 
     private func getDifficultyDisplayName() -> String {
-        if currentProgress.allowMixedDifficulty == true {
+        if currentProgress.allowMixedDifficulty {
             return L10n.Settings.mixedAllLevels
         }
 
@@ -349,9 +257,9 @@ struct SettingsView: View {
         }
 
         switch difficulty {
-        case 1: return L10n.Settings.beginnerCEFR()
-        case 2: return L10n.Settings.intermediateCEFR()
-        case 3: return L10n.Settings.advancedCEFR()
+        case 1: return L10n.Difficulty.easy
+        case 2: return L10n.Difficulty.medium
+        case 3: return L10n.Difficulty.hard
         default: return L10n.Settings.notSet
         }
     }
@@ -592,14 +500,14 @@ struct WordDetailView: View {
                     VStack(spacing: DesignTokens.spacing.lg) {
                         HStack {
                             Spacer()
-                            Text(difficultyText(level: word.difficultyLevel))
+                            Text(word.displayDifficulty)
                                 .font(DesignTokens.typography.footnote(weight: .semibold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, DesignTokens.spacing.sm)
                                 .padding(.vertical, DesignTokens.spacing.xs)
                                 .background(
                                     Capsule()
-                                        .fill(difficultyColor(level: word.difficultyLevel))
+                                        .fill(difficultyColor(for: word))
                                 )
                         }
                         
@@ -645,9 +553,7 @@ struct WordDetailView: View {
 
                     // Additional fields
 
-                    if let cefrLevel = word.cefrLevel, !cefrLevel.isEmpty {
-                        DetailCard(title: L10n.WordDetail.cefrLevel, content: cefrLevel, icon: "graduationcap.fill")
-                    }
+                    DetailCard(title: L10n.WordDetail.cefrLevel, content: word.displayDifficulty, icon: "graduationcap.fill")
 
                     if let plural = word.plural, !plural.isEmpty {
                         DetailCard(title: L10n.WordDetail.pluralForm, content: L10n.WordDetail.plural(plural), icon: "character.textbox")
@@ -680,21 +586,14 @@ struct WordDetailView: View {
         }
     }
 
-    private func difficultyText(level: Int) -> String {
-        switch level {
-        case 1: return L10n.Difficulty.easy
-        case 2: return L10n.Difficulty.medium
-        case 3: return L10n.Difficulty.hard
-        default: return L10n.Difficulty.easy
-        }
-    }
-    
-    private func difficultyColor(level: Int) -> Color {
-        switch level {
-        case 1: return DesignTokens.color.difficultyEasy
-        case 2: return DesignTokens.color.difficultyMedium
-        case 3: return DesignTokens.color.difficultyHard
-        default: return DesignTokens.color.difficultyEasy
+    private func difficultyColor(for word: Word) -> Color {
+        switch DifficultyBucket.from(cefrLevel: word.cefrLevel, fallbackDifficultyLevel: word.difficultyLevel) {
+        case .easy:
+            return DesignTokens.color.difficultyEasy
+        case .medium:
+            return DesignTokens.color.difficultyMedium
+        case .hard:
+            return DesignTokens.color.difficultyHard
         }
     }
 }
@@ -736,7 +635,7 @@ struct DetailCard: View {
 // MARK: - Difficulty Picker Sheet
 
 struct DifficultyPickerSheet: View {
-    let currentProgress: UserProgress
+    let currentProgress: AppState
     let modelContext: ModelContext
     let onDismiss: () -> Void
 
@@ -762,33 +661,33 @@ struct DifficultyPickerSheet: View {
                         VStack(spacing: DesignTokens.spacing.lg) {
                             DifficultyCard(
                                 level: 1,
-                                title: L10n.Difficulty.beginner,
+                                title: L10n.Difficulty.easy,
                                 iconColor: DesignTokens.color.difficultyEasy,
-                                cefrLevels: "A1-A2",
-                                description: L10n.Difficulty.commonEverydayWords,
-                                exampleWords: ["Hallo", "Danke", "Guten Morgen"],
+                                levelSummary: DifficultyBucket.easy.levelSummary,
+                                description: DifficultyBucket.easy.description,
+                                exampleWords: DifficultyBucket.easy.exampleWords,
                                 isSelected: selectedDifficulty == 1,
                                 onTap: { selectedDifficulty = 1 }
                             )
 
                             DifficultyCard(
                                 level: 2,
-                                title: L10n.Difficulty.intermediate,
+                                title: L10n.Difficulty.medium,
                                 iconColor: DesignTokens.color.difficultyMedium,
-                                cefrLevels: "B1-B2",
-                                description: L10n.Difficulty.moderateVocab,
-                                exampleWords: ["Obwohl", "Außerdem", "Trotzdem"],
+                                levelSummary: DifficultyBucket.medium.levelSummary,
+                                description: DifficultyBucket.medium.description,
+                                exampleWords: DifficultyBucket.medium.exampleWords,
                                 isSelected: selectedDifficulty == 2,
                                 onTap: { selectedDifficulty = 2 }
                             )
 
                             DifficultyCard(
                                 level: 3,
-                                title: L10n.Difficulty.advanced,
+                                title: L10n.Difficulty.hard,
                                 iconColor: DesignTokens.color.difficultyHard,
-                                cefrLevels: "C1-C2",
-                                description: L10n.Difficulty.complexTerms,
-                                exampleWords: ["Gleichwohl", "Gegebenheit", "Auseinandersetzung"],
+                                levelSummary: DifficultyBucket.hard.levelSummary,
+                                description: DifficultyBucket.hard.description,
+                                exampleWords: DifficultyBucket.hard.exampleWords,
                                 isSelected: selectedDifficulty == 3,
                                 onTap: { selectedDifficulty = 3 }
                             )
@@ -881,7 +780,7 @@ struct DifficultyPickerSheet: View {
         }
         .onAppear {
             selectedDifficulty = currentProgress.preferredDifficultyLevel
-            allowMixed = currentProgress.allowMixedDifficulty ?? false
+            allowMixed = currentProgress.allowMixedDifficulty
         }
     }
 
@@ -900,7 +799,7 @@ struct DifficultyPickerSheet: View {
 // MARK: - Language Picker Sheet
 
 struct LanguagePickerSheet: View {
-    let currentProgress: UserProgress
+    let currentProgress: AppState
     let modelContext: ModelContext
     let onDismiss: () -> Void
 

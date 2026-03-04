@@ -36,7 +36,10 @@ struct CollapsibleSection<Content: View>: View {
                 }
                 .padding(.vertical, DesignTokens.spacing.md)
                 .padding(.horizontal, DesignTokens.spacing.xs)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel("\(title). \(isExpanded ? "Expanded" : "Collapsed"). Tap to \(isExpanded ? "collapse" : "expand")")
 

@@ -2,109 +2,46 @@
 //  BrowseWordsView.swift
 //  aWordaDay
 //
-//  Created by Claude on 15.10.25.
-//
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct BrowseWordsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Query private var allWords: [Word]
 
     @State private var searchText = ""
     @State private var showOnlyFavorites = false
-    @State private var progressFilter: ProgressFilter = .all
     @State private var difficultyFilter: DifficultyFilter = .all
     @State private var sortOption: SortOption = .dateAdded
-    @State private var expandedWordId: String? = nil
+    @State private var expandedWordId: String?
+    @State private var visibleWords: [BrowseWordRow] = []
+    @State private var totalCount = 0
+    @State private var page = 1
+    @State private var hasMorePages = false
+    @State private var isLoading = false
+    @State private var pendingReloadTask: Task<Void, Never>?
 
-    private let allowedWordIDs: Set<String>?
+    private let browseService = BrowseService()
+    private let userStateStore = SwiftDataUserStateStore()
+    private let showsOnlyViewedWords: Bool
     private let isEmbedded: Bool
 
-    init(allowedWordIDs: Set<String>? = nil, isEmbedded: Bool = false) {
-        self.allowedWordIDs = allowedWordIDs
+    init(showsOnlyViewedWords: Bool = false, isEmbedded: Bool = false) {
+        self.showsOnlyViewedWords = showsOnlyViewedWords
         self.isEmbedded = isEmbedded
     }
 
     @StateObject private var speechSynthesizer = SpeechSynthesizerManager()
 
-    private var baseWords: [Word] {
-        guard let allowedWordIDs else {
-            return allWords
-        }
-        return allWords.filter { allowedWordIDs.contains($0.id) }
-    }
-
-    private var languageWords: [Word] {
-        baseWords.filter { $0.sourceLanguage == AppLanguage.sourceCode }
-    }
-
     private var activeFilterCount: Int {
         var count = 0
         if !searchText.isEmpty { count += 1 }
         if showOnlyFavorites { count += 1 }
-        if progressFilter != .all { count += 1 }
         if difficultyFilter != .all { count += 1 }
         return count
     }
 
-    // Filtered and sorted words
-    private var filteredWords: [Word] {
-        var words = languageWords
-
-        // Filter by search text
-        if !searchText.isEmpty {
-            words = words.filter { word in
-                word.word.localizedCaseInsensitiveContains(searchText) ||
-                word.translation.localizedCaseInsensitiveContains(searchText) ||
-                (word.usageNotes?.localizedCaseInsensitiveContains(searchText) ?? false)
-            }
-        }
-
-        // Filter favorites
-        if showOnlyFavorites {
-            words = words.filter { $0.isFavorite }
-        }
-
-        // Filter progress
-        switch progressFilter {
-        case .all:
-            break
-        case .learning:
-            words = words.filter { !$0.isLearned }
-        case .learned:
-            words = words.filter { $0.isLearned }
-        case .dueReview:
-            words = words.filter { $0.isDueForReview }
-        }
-
-        // Filter difficulty
-        switch difficultyFilter {
-        case .all:
-            break
-        case .easy:
-            words = words.filter { $0.difficultyLevel <= 1 }
-        case .medium:
-            words = words.filter { $0.difficultyLevel == 2 }
-        case .hard:
-            words = words.filter { $0.difficultyLevel >= 3 }
-        }
-
-        // Sort
-        switch sortOption {
-        case .dateAdded:
-            words = words.sorted { $0.dateAdded > $1.dateAdded }
-        case .alphabetical:
-            words = words.sorted { $0.word < $1.word }
-        case .difficulty:
-            words = words.sorted { $0.difficultyLevel < $1.difficultyLevel }
-        }
-
-        return words
-    }
-    
     private var hasActiveFilters: Bool {
         activeFilterCount > 0
     }
@@ -112,7 +49,6 @@ struct BrowseWordsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background
                 LinearGradient(
                     colors: [
                         DesignTokens.color.backgroundLight,
@@ -124,20 +60,30 @@ struct BrowseWordsView: View {
                 .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Search bar
                     searchBar
-
-                    // Filter chips
                     filterChips
 
-                    // Word list
-                    if filteredWords.isEmpty {
+                    if isLoading && visibleWords.isEmpty {
+                        VStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                    } else if visibleWords.isEmpty {
                         emptyStateView
                     } else {
                         ScrollView {
                             LazyVStack(spacing: DesignTokens.spacing.md) {
-                                ForEach(filteredWords) { word in
-                                    wordCard(word)
+                                ForEach(visibleWords) { row in
+                                    wordCard(row)
+                                        .onAppear {
+                                            loadNextPageIfNeeded(for: row)
+                                        }
+                                }
+
+                                if hasMorePages && isLoading {
+                                    ProgressView()
+                                        .padding(.vertical, DesignTokens.spacing.lg)
                                 }
                             }
                             .padding(.horizontal, DesignTokens.spacing.lg)
@@ -162,9 +108,9 @@ struct BrowseWordsView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         ForEach(SortOption.allCases, id: \.self) { option in
-                            Button(action: {
+                            Button {
                                 sortOption = option
-                            }) {
+                            } label: {
                                 HStack {
                                     Text(option.title)
                                     if sortOption == option {
@@ -182,11 +128,14 @@ struct BrowseWordsView: View {
             }
         }
         .onAppear {
+            reload(reset: true, debounced: false)
             FirebaseAnalyticsManager.shared.logScreenView("Browse Words")
         }
+        .onChange(of: searchText) { reload(reset: true, debounced: true) }
+        .onChange(of: showOnlyFavorites) { reload(reset: true, debounced: false) }
+        .onChange(of: difficultyFilter) { reload(reset: true, debounced: false) }
+        .onChange(of: sortOption) { reload(reset: true, debounced: false) }
     }
-
-    // MARK: - Search Bar
 
     private var searchBar: some View {
         HStack(spacing: DesignTokens.spacing.md) {
@@ -200,9 +149,9 @@ struct BrowseWordsView: View {
                 .autocorrectionDisabled()
 
             if !searchText.isEmpty {
-                Button(action: {
+                Button {
                     searchText = ""
-                }) {
+                } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(DesignTokens.color.textMuted)
@@ -220,22 +169,9 @@ struct BrowseWordsView: View {
         .padding(.top, DesignTokens.spacing.md)
     }
 
-    // MARK: - Filter Chips
-
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                // Word count
-                Text("\(filteredWords.count)")
-                    .font(DesignTokens.typography.caption(weight: .bold))
-                    .foregroundStyle(DesignTokens.color.textMuted)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(DesignTokens.color.cardBackground)
-                    )
-
+            HStack(spacing: 8) {
                 FilterChip(
                     title: L10n.Browse.favorites,
                     icon: "star.fill",
@@ -243,35 +179,40 @@ struct BrowseWordsView: View {
                     action: { showOnlyFavorites.toggle() }
                 )
 
-                ForEach(ProgressFilter.quickFilters, id: \.self) { option in
-                    FilterChip(
-                        title: option.title,
-                        icon: option.icon,
-                        isSelected: progressFilter == option,
-                        action: {
-                            progressFilter = progressFilter == option ? .all : option
+                Menu {
+                    Button {
+                        difficultyFilter = .all
+                    } label: {
+                        HStack {
+                            Text(L10n.Browse.all)
+                            if difficultyFilter == .all {
+                                Image(systemName: "checkmark")
+                            }
                         }
-                    )
-                }
+                    }
 
-                // Divider dot between progress and difficulty
-                Circle()
-                    .fill(DesignTokens.color.textMuted.opacity(0.3))
-                    .frame(width: 4, height: 4)
-
-                ForEach(DifficultyFilter.quickFilters, id: \.self) { option in
-                    FilterChip(
-                        title: option.title,
-                        icon: option.icon,
-                        isSelected: difficultyFilter == option,
-                        action: {
-                            difficultyFilter = difficultyFilter == option ? .all : option
+                    ForEach(DifficultyFilter.quickFilters, id: \.self) { option in
+                        Button {
+                            difficultyFilter = option
+                        } label: {
+                            HStack {
+                                Text(option.title)
+                                if difficultyFilter == option {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
                         }
+                    }
+                } label: {
+                    FilterChipLabel(
+                        title: difficultyMenuTitle,
+                        icon: "line.3.horizontal.decrease.circle",
+                        isSelected: difficultyFilter != .all
                     )
                 }
 
                 if hasActiveFilters {
-                    Button(action: { clearAllFilters() }) {
+                    Button(action: clearAllFilters) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(DesignTokens.color.primary)
@@ -283,70 +224,60 @@ struct BrowseWordsView: View {
         .padding(.vertical, DesignTokens.spacing.sm)
     }
 
-    // MARK: - Word Card
-
-    private func wordCard(_ word: Word) -> some View {
+    private func wordCard(_ row: BrowseWordRow) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Main content - always visible
             VStack(alignment: .leading, spacing: DesignTokens.spacing.md) {
                 HStack(alignment: .top, spacing: DesignTokens.spacing.md) {
-                    // Learned indicator
                     Circle()
-                        .fill(word.isLearned ? DesignTokens.color.success : DesignTokens.color.textMuted)
+                        .fill(row.isLearned ? DesignTokens.color.success : DesignTokens.color.textMuted)
                         .frame(width: 10, height: 10)
                         .padding(.top, 7)
-                        .accessibilityLabel(word.isLearned ? L10n.Browse.learned : L10n.Browse.notLearned)
+                        .accessibilityLabel(row.isLearned ? L10n.Browse.learned : L10n.Browse.notLearned)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(word.displayWord)
+                        Text(row.displayWord)
                             .font(DesignTokens.typography.headline(weight: .bold))
                             .foregroundStyle(DesignTokens.color.textPrimary)
 
-                        Text(word.localizedTranslation)
+                        Text(row.localizedTranslation)
                             .font(DesignTokens.typography.callout(weight: .semibold))
                             .foregroundStyle(DesignTokens.color.textLight)
                     }
 
                     Spacer()
 
-                    // Favorite button
-                    Button(action: {
+                    Button {
                         HapticFeedback.light()
-                        word.isFavorite.toggle()
-                        try? modelContext.save()
-                    }) {
-                        Image(systemName: word.isFavorite ? "star.fill" : "star")
+                        toggleFavorite(for: row)
+                    } label: {
+                        Image(systemName: row.isFavorite ? "star.fill" : "star")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(word.isFavorite ? DesignTokens.color.gold : DesignTokens.color.textMuted)
+                            .foregroundStyle(row.isFavorite ? DesignTokens.color.gold : DesignTokens.color.textMuted)
                     }
-                    .accessibilityLabel(word.isFavorite ? L10n.WordDetail.removeFromFavorites : L10n.WordDetail.addToFavorites)
+                    .accessibilityLabel(row.isFavorite ? L10n.WordDetail.removeFromFavorites : L10n.WordDetail.addToFavorites)
                 }
 
-                // Badges row
                 HStack(spacing: DesignTokens.spacing.sm) {
-                    // Difficulty badge
-                    BadgeView(text: word.displayDifficulty, color: DesignTokens.color.info)
+                    BadgeView(text: row.displayDifficulty, color: DesignTokens.color.info)
 
                     Spacer()
 
-                    // Listen button
-                    Button(action: {
-                        pronounceWord(word)
-                    }) {
+                    Button {
+                        pronounceWord(row)
+                    } label: {
                         Image(systemName: "speaker.wave.2.fill")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(DesignTokens.color.pronunciationAccent)
                     }
-                    .accessibilityLabel("Listen to \(word.word)")
+                    .accessibilityLabel("Listen to \(row.word)")
 
-                    // Expand/collapse button
-                    Button(action: {
+                    Button {
                         HapticFeedback.selection()
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            expandedWordId = expandedWordId == word.id ? nil : word.id
+                            expandedWordId = expandedWordId == row.id ? nil : row.id
                         }
-                    }) {
-                        Image(systemName: expandedWordId == word.id ? "chevron.up" : "chevron.down")
+                    } label: {
+                        Image(systemName: expandedWordId == row.id ? "chevron.up" : "chevron.down")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(DesignTokens.color.textMuted)
                     }
@@ -354,18 +285,18 @@ struct BrowseWordsView: View {
             }
             .padding(DesignTokens.spacing.lg)
 
-            // Expanded content
-            if expandedWordId == word.id {
+            if expandedWordId == row.id {
                 VStack(alignment: .leading, spacing: DesignTokens.spacing.md) {
                     Divider()
                         .padding(.horizontal, DesignTokens.spacing.lg)
 
-                    if let usageNotes = word.localizedUsageNotes, !usageNotes.isEmpty {
+                    if let usageNotes = row.localizedUsageNotes, !usageNotes.isEmpty {
                         VStack(alignment: .leading, spacing: DesignTokens.spacing.sm) {
                             Text(L10n.WordDetail.usageNotes)
                                 .font(DesignTokens.typography.footnote(weight: .bold))
                                 .foregroundStyle(DesignTokens.color.textSubtle)
                                 .textCase(.uppercase)
+
                             Text(usageNotes)
                                 .font(DesignTokens.typography.callout(weight: .medium))
                                 .foregroundStyle(DesignTokens.color.textTertiary)
@@ -373,15 +304,14 @@ struct BrowseWordsView: View {
                         .padding(.horizontal, DesignTokens.spacing.lg)
                     }
 
-                    // Examples
-                    if !word.examples.isEmpty {
+                    if !row.examples.isEmpty {
                         VStack(alignment: .leading, spacing: DesignTokens.spacing.sm) {
                             Text(L10n.Common.examples)
                                 .font(DesignTokens.typography.footnote(weight: .bold))
                                 .foregroundStyle(DesignTokens.color.textSubtle)
                                 .textCase(.uppercase)
 
-                            ForEach(word.localizedExamplePairs, id: \.0) { example, translation in
+                            ForEach(row.localizedExamplePairs, id: \.0) { example, translation in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(example)
                                         .font(DesignTokens.typography.caption(weight: .medium))
@@ -407,8 +337,6 @@ struct BrowseWordsView: View {
                 .shadow(color: DesignTokens.color.primary.opacity(0.1), radius: 8, x: 0, y: 4)
         )
     }
-
-    // MARK: - Empty State
 
     private var emptyStateView: some View {
         VStack(spacing: DesignTokens.spacing.xl) {
@@ -438,6 +366,7 @@ struct BrowseWordsView: View {
                             suggestionChip(label: L10n.Browse.clearFilters, icon: "line.3.horizontal.decrease.circle") {
                                 clearAllFilters()
                             }
+
                             if !searchText.isEmpty {
                                 suggestionChip(label: L10n.Browse.resetSearch, icon: "text.magnifyingglass") {
                                     searchText = ""
@@ -453,28 +382,99 @@ struct BrowseWordsView: View {
         }
     }
 
-    // MARK: - Helper Functions
-
     private func clearAllFilters() {
         searchText = ""
         showOnlyFavorites = false
-        progressFilter = .all
         difficultyFilter = .all
     }
 
-    private func pronounceWord(_ word: Word) {
+    private func reload(reset: Bool, debounced: Bool) {
+        pendingReloadTask?.cancel()
+
+        let action = { @MainActor in
+            if reset {
+                page = 1
+                expandedWordId = nil
+            }
+            loadPage(reset: reset)
+        }
+
+        if debounced {
+            pendingReloadTask = Task {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                guard !Task.isCancelled else { return }
+                action()
+            }
+        } else {
+            Task { action() }
+        }
+    }
+
+    private func loadPage(reset: Bool) {
+        guard !isLoading else { return }
+        isLoading = true
+
+        let query = BrowseQuery(
+            searchText: searchText,
+            favoritesOnly: showOnlyFavorites,
+            progressFilter: .all,
+            difficultyFilter: difficultyFilter,
+            sortOption: sortOption,
+            page: page,
+            pageSize: 60,
+            visibleOnly: showsOnlyViewedWords,
+            sourceLanguage: AppLanguage.sourceCode
+        )
+
+        let result = browseService.fetchPage(query: query, modelContext: modelContext, showsOnlyViewedWords: showsOnlyViewedWords)
+        if reset {
+            visibleWords = result.rows
+        } else {
+            let newRows = result.rows.filter { row in
+                !visibleWords.contains(where: { $0.id == row.id })
+            }
+            visibleWords.append(contentsOf: newRows)
+        }
+
+        totalCount = result.totalCount
+        hasMorePages = result.hasMorePages
+        isLoading = false
+    }
+
+    private func loadNextPageIfNeeded(for row: BrowseWordRow) {
+        guard row.id == visibleWords.last?.id, hasMorePages, !isLoading else { return }
+        page += 1
+        loadPage(reset: false)
+    }
+
+    private func toggleFavorite(for row: BrowseWordRow) {
+        let snapshot = userStateStore.toggleFavorite(in: modelContext, wordID: row.id)
+        try? modelContext.save()
+
+        if let index = visibleWords.firstIndex(where: { $0.id == row.id }) {
+            let updated = BrowseWordRow(detail: visibleWords[index].detail, state: snapshot)
+            if showOnlyFavorites && !snapshot.isFavorite {
+                visibleWords.remove(at: index)
+                totalCount = max(totalCount - 1, 0)
+            } else {
+                visibleWords[index] = updated
+            }
+        }
+    }
+
+    private func pronounceWord(_ row: BrowseWordRow) {
         speechSynthesizer.speak(
-            text: word.word,
-            language: word.pronunciationCode,
+            text: row.word,
+            language: row.pronunciationCode,
             style: .normal
         )
 
         FirebaseAnalyticsManager.shared.logWordListened(
-            word: word.word,
-            language: word.sourceLanguage
+            word: row.word,
+            language: row.sourceLanguage
         )
     }
-    
+
     private func suggestionChip(label: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: DesignTokens.spacing.sm) {
@@ -494,9 +494,20 @@ struct BrowseWordsView: View {
         }
         .buttonStyle(ScaleButtonStyle())
     }
-}
 
-// MARK: - Supporting Views
+    private var difficultyMenuTitle: String {
+        switch difficultyFilter {
+        case .all:
+            return L10n.Browse.difficulty
+        case .easy:
+            return L10n.Difficulty.easy
+        case .medium:
+            return L10n.Difficulty.medium
+        case .hard:
+            return L10n.Difficulty.hard
+        }
+    }
+}
 
 struct FilterChip: View {
     let title: String
@@ -520,10 +531,7 @@ struct FilterChip: View {
                     .fill(
                         isSelected ?
                         LinearGradient(
-                            colors: [
-                                DesignTokens.color.info,
-                                DesignTokens.color.primary
-                            ],
+                            colors: [DesignTokens.color.info, DesignTokens.color.primary],
                             startPoint: .leading,
                             endPoint: .trailing
                         ) :
@@ -550,6 +558,8 @@ struct FilterChipLabel: View {
                 .font(.system(size: 12, weight: .semibold))
             Text(title)
                 .font(DesignTokens.typography.caption(weight: .semibold))
+            Image(systemName: "chevron.down")
+                .font(.system(size: 11, weight: .bold))
         }
         .foregroundStyle(isSelected ? Color.white : DesignTokens.color.textTertiary)
         .padding(.horizontal, DesignTokens.spacing.md)
@@ -559,10 +569,7 @@ struct FilterChipLabel: View {
                 .fill(
                     isSelected ?
                     LinearGradient(
-                        colors: [
-                            DesignTokens.color.info,
-                            DesignTokens.color.primary
-                        ],
+                        colors: [DesignTokens.color.info, DesignTokens.color.primary],
                         startPoint: .leading,
                         endPoint: .trailing
                     ) :
@@ -591,27 +598,6 @@ struct BadgeView: View {
                 Capsule()
                     .fill(color.opacity(0.15))
             )
-    }
-}
-
-struct StatBadge: View {
-    let icon: String
-    let value: String
-    let label: String
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(DesignTokens.typography.footnote(weight: .bold))
-                Text(label)
-                    .font(DesignTokens.typography.footnote(weight: .medium))
-                    .foregroundStyle(DesignTokens.color.textMuted)
-            }
-        }
-        .foregroundStyle(DesignTokens.color.interactiveBlue)
     }
 }
 
@@ -689,5 +675,5 @@ enum SortOption: CaseIterable {
 
 #Preview {
     BrowseWordsView()
-        .modelContainer(for: [Word.self, UserProgress.self, ChatHistoryMessage.self], inMemory: true)
+        .modelContainer(for: [AppState.self, UserWordState.self], inMemory: true)
 }

@@ -47,13 +47,16 @@ enum L10n {
         static var easy: String { zh ? "简单" : "Easy" }
         static var medium: String { zh ? "中等" : "Medium" }
         static var hard: String { zh ? "困难" : "Hard" }
+        static var easySummary: String { zh ? "A1-A2 词汇" : "A1-A2 words" }
+        static var mediumSummary: String { zh ? "B1 词汇" : "B1 words" }
+        static var hardSummary: String { zh ? "B2-C2 词汇" : "B2-C2 words" }
         static var mixAllLevels: String { zh ? "混合所有级别" : "Mix all levels" }
-        static var mixAllLevelsDesc: String { zh ? "包含所有难度级别的单词以增加多样性" : "Include words from all difficulty levels for variety" }
+        static var mixAllLevelsDesc: String { zh ? "混合简单、中等和困难词汇以增加多样性" : "Mix easy, medium, and hard words for variety" }
         static var chooseYourLevel: String { zh ? "选择你的级别" : "Choose Your Level" }
-        static var selectDifficultyDesc: String { zh ? "选择与你当前水平相匹配的难度" : "Select the difficulty that matches your current skill level" }
-        static var commonEverydayWords: String { zh ? "常见日常词汇和简单表达" : "Common everyday words and simple expressions" }
-        static var moderateVocab: String { zh ? "适用于对话和工作的中级词汇" : "Moderate vocabulary for conversations and work" }
-        static var complexTerms: String { zh ? "复杂的学术和专业术语" : "Complex academic and professional terms" }
+        static var selectDifficultyDesc: String { zh ? "选择最适合你当前节奏的词汇难度" : "Choose the word difficulty that best matches your current pace" }
+        static var commonEverydayWords: String { zh ? "适合日常生活和简单对话的基础词汇" : "Core vocabulary for daily life and simple conversations" }
+        static var moderateVocab: String { zh ? "以 B1 为主，适合更自然的对话和阅读" : "Mostly B1 vocabulary for more natural conversations and reading" }
+        static var complexTerms: String { zh ? "以 B2-C2 为主，适合更细腻和进阶的德语表达" : "Mostly B2-C2 vocabulary for more nuanced and advanced German" }
         static var examplesLabel: String { zh ? "示例：" : "Examples:" }
     }
 
@@ -72,9 +75,11 @@ enum L10n {
         static var usageNotes: String { zh ? "用法说明" : "Usage Notes" }
         static var relatedWords: String { zh ? "相关词汇" : "Related Words" }
         static var didYouKnow: String { zh ? "你知道吗？" : "Did you know?" }
+        static var details: String { zh ? "详情" : "Details" }
+        static var noAdditionalDetails: String { zh ? "这个词目前还没有更多内容。" : "No additional details are available for this word yet." }
         static var wordDetails: String { zh ? "词汇详情" : "Word Details" }
         static var pluralForm: String { zh ? "复数形式" : "Plural Form" }
-        static var cefrLevel: String { zh ? "CEFR 等级" : "CEFR Level" }
+        static var cefrLevel: String { zh ? "难度" : "Difficulty" }
         static func plural(_ p: String) -> String { zh ? "复数：\(p)" : "Plural: \(p)" }
         static func studying(_ word: String) -> String { zh ? "正在学习：\(word)" : "Studying: \(word)" }
         static var shareWord: String { zh ? "分享单词" : "Share Word" }
@@ -230,12 +235,10 @@ enum L10n {
         static var displayLanguage: String { zh ? "显示语言" : "Display Language" }
         static var about: String { zh ? "关于" : "About" }
         static var appVersion: String { zh ? "应用版本" : "App Version" }
-        static var mixedAllLevels: String { zh ? "混合 - 所有级别" : "Mixed - All levels" }
+        static var contactDeveloper: String { zh ? "联系开发者" : "Contact Developer" }
+        static var mixedAllLevels: String { zh ? "混合 - 简单、中等、困难" : "Mixed - Easy, Medium & Hard" }
         static var notSet: String { zh ? "未设置" : "Not set" }
-        static func beginnerCEFR() -> String { zh ? "初级 (A1-A2)" : "Beginner (A1-A2)" }
-        static func intermediateCEFR() -> String { zh ? "中级 (B1-B2)" : "Intermediate (B1-B2)" }
-        static func advancedCEFR() -> String { zh ? "高级 (C1-C2)" : "Advanced (C1-C2)" }
-        static var difficultyPickerDesc: String { zh ? "选择与你当前水平相匹配的难度级别。这有助于我们为你推荐合适的单词。" : "Select the difficulty that matches your current skill level. This helps us suggest words that are right for you." }
+        static var difficultyPickerDesc: String { zh ? "选择你想看到的词汇难度。这有助于我们为你推荐更合适的单词。" : "Choose the word difficulty you want to see. This helps us suggest words that fit you better." }
         static var languagePickerDesc: String { zh ? "选择翻译和解释的语言。德语单词和发音保持不变。" : "Choose the language for translations and explanations. German words and pronunciation stay the same." }
     }
 
@@ -248,12 +251,14 @@ enum L10n {
         static var everythingToMaster: String { zh ? "掌握德语所需的一切" : "Everything you need to master German" }
         static var dailyWords: String { zh ? "每日单词" : "Daily Words" }
         static var dailyWordsDesc: String { zh ? "每天学习精选单词，结合间隔重复" : "Learn curated words every day with spaced repetition" }
+        static var smartReview: String { zh ? "智能复习" : "Smart Review" }
+        static var smartReviewDesc: String { zh ? "根据你的学习节奏循环安排新词和复习词" : "Rotate new and due words based on your learning pace" }
+        static var browseLibrary: String { zh ? "浏览词库" : "Browse Library" }
+        static var browseLibraryDesc: String { zh ? "快速搜索、筛选和重看你已经学过的词" : "Search, filter, and revisit the words you've already seen" }
         static var funGames: String { zh ? "趣味游戏" : "Fun Games" }
         static var funGamesDesc: String { zh ? "通过冠词游戏、单词冒险等练习" : "Practice with Der/Die/Das, Word Quest, and more" }
         static var aiTutor: String { zh ? "AI导师" : "AI Tutor" }
         static var aiTutorDesc: String { zh ? "与Worty聊天，询问任何单词的问题" : "Chat with Worty to ask questions about any word" }
-        static var homeWidget: String { zh ? "主屏小组件" : "Home Widget" }
-        static var homeWidgetDesc: String { zh ? "在主屏幕上查看每日单词" : "See your daily word right on your home screen" }
         static var youreAllSet: String { zh ? "一切就绪！" : "You're All Set!" }
         static var letsStart: String { zh ? "开始你的学习之旅" : "Let's start your learning journey" }
         static var getStarted: String { zh ? "开始" : "Get Started" }

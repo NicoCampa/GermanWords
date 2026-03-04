@@ -2,35 +2,21 @@
 //  StatsTab.swift
 //  aWordaDay
 //
-//  Unified stats screen combining streak, level, and progress.
-//
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct StatsTab: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var words: [Word]
-    @Query private var userProgress: [UserProgress]
 
-    private var currentProgress: UserProgress {
-        UserProgress.current(in: modelContext, cached: userProgress)
-    }
+    @State private var summary = StatsSummary(
+        appState: AppState(),
+        totalWordsAvailable: 0,
+        discoveredCount: 0,
+        recentWordLabels: []
+    )
 
-    private var availableWords: [Word] {
-        words.filter { $0.sourceLanguage == AppLanguage.sourceCode }
-    }
-
-    private var learnedWords: [Word] {
-        availableWords.filter { $0.timesViewed > 0 }
-    }
-
-    private var wordsSeenToday: [Word] {
-        let ids = currentProgress.dailyWordsSeenIds ?? []
-        return ids.compactMap { id in
-            words.first { $0.id == id }
-        }.filter { $0.sourceLanguage == AppLanguage.sourceCode }
-    }
+    private let statsService = StatsService()
 
     var body: some View {
         NavigationStack {
@@ -47,13 +33,8 @@ struct StatsTab: View {
 
                 ScrollView {
                     VStack(spacing: DesignTokens.spacing.xl) {
-                        // MARK: - Streak Section
                         streakSection
-
-                        // MARK: - Level Section
                         levelSection
-
-                        // MARK: - Learning Stats Section
                         learnedSection
                     }
                     .padding(.horizontal, DesignTokens.spacing.lg2)
@@ -65,33 +46,30 @@ struct StatsTab: View {
             .navigationBarTitleDisplayMode(.large)
         }
         .onAppear {
+            refreshSummary()
             FirebaseAnalyticsManager.shared.logScreenView("Stats")
         }
     }
-
-    // MARK: - Streak Section
 
     private var streakSection: some View {
         VStack(spacing: DesignTokens.spacing.lg) {
             sectionLabel(L10n.Stats.streak)
 
-            CompactStreakWidget(
-                currentStreak: currentProgress.currentStreak,
-                longestStreak: currentProgress.longestStreak,
-                weeklyProgress: currentProgress.weeklyProgress,
-                weeklyGoal: currentProgress.weeklyGoal
+            CompactStreakCard(
+                currentStreak: summary.appState.currentStreak,
+                longestStreak: summary.appState.longestStreak,
+                weeklyProgress: summary.appState.weeklyProgress,
+                weeklyGoal: summary.appState.weeklyGoal
             )
 
-            MonthlyStreakCalendar(currentStreak: currentProgress.currentStreak)
+            MonthlyStreakCalendar(currentStreak: summary.appState.currentStreak)
         }
     }
 
-    // MARK: - Level Section
-
     private var levelSection: some View {
-        let nextLevelXP = currentProgress.xpForNextLevel()
-        let currentLevelXP = currentProgress.xpRequiredForLevel(currentProgress.currentLevel)
-        let xpIntoCurrentLevel = max(currentProgress.totalXP - currentLevelXP, 0)
+        let nextLevelXP = summary.appState.xpForNextLevel()
+        let currentLevelXP = summary.appState.xpRequiredForLevel(summary.appState.currentLevel)
+        let xpIntoCurrentLevel = max(summary.appState.totalXP - currentLevelXP, 0)
         let xpNeededForNext = max(nextLevelXP - currentLevelXP, 1)
         let fraction = Double(xpIntoCurrentLevel) / Double(xpNeededForNext)
 
@@ -101,11 +79,11 @@ struct StatsTab: View {
             VStack(alignment: .leading, spacing: DesignTokens.spacing.lg) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.Stats.levelN(currentProgress.currentLevel))
+                        Text(L10n.Stats.levelN(summary.appState.currentLevel))
                             .font(DesignTokens.typography.largeTitle(weight: .bold))
                             .foregroundStyle(DesignTokens.color.headingPrimary)
 
-                        Text(L10n.Stats.xpTotal(currentProgress.totalXP))
+                        Text(L10n.Stats.xpTotal(summary.appState.totalXP))
                             .font(DesignTokens.typography.caption())
                             .foregroundStyle(DesignTokens.color.textLight)
                     }
@@ -121,7 +99,7 @@ struct StatsTab: View {
                     ProgressView(value: min(max(fraction, 0), 1))
                         .progressViewStyle(LinearProgressViewStyle(tint: DesignTokens.color.progressTint))
 
-                    Text(L10n.Stats.xpToLevel(xpIntoCurrentLevel, xpNeededForNext, currentProgress.currentLevel + 1))
+                    Text(L10n.Stats.xpToLevel(xpIntoCurrentLevel, xpNeededForNext, summary.appState.currentLevel + 1))
                         .font(DesignTokens.typography.caption())
                         .foregroundStyle(DesignTokens.color.textLight)
                 }
@@ -135,39 +113,27 @@ struct StatsTab: View {
         }
     }
 
-    // MARK: - Learned Section
-
     private var learnedSection: some View {
-        let discoveredCount = learnedWords.count
-        let masteredCount = currentProgress.totalWordsLearned
+        let discoveredCount = summary.discoveredCount
+        let masteredCount = summary.appState.totalWordsLearned
 
         return VStack(spacing: DesignTokens.spacing.lg) {
             VStack(alignment: .leading, spacing: DesignTokens.spacing.lg) {
                 HStack(spacing: DesignTokens.spacing.xl) {
                     statColumn(value: "\(discoveredCount)", label: L10n.Stats.discovered)
                     statColumn(value: "\(masteredCount)", label: L10n.Stats.mastered)
-                    statColumn(value: "\(currentProgress.totalXP)", label: L10n.Stats.xp)
+                    statColumn(value: "\(summary.appState.totalXP)", label: L10n.Stats.xp)
                 }
 
-                if availableWords.count > 0 {
-                    let ratio = Double(discoveredCount) / Double(max(availableWords.count, 1))
+                if summary.totalWordsAvailable > 0 {
+                    let ratio = Double(discoveredCount) / Double(max(summary.totalWordsAvailable, 1))
                     VStack(alignment: .leading, spacing: DesignTokens.spacing.sm) {
                         ProgressView(value: min(max(ratio, 0), 1))
                             .progressViewStyle(LinearProgressViewStyle(tint: DesignTokens.color.learningGreen))
 
-                        Text(L10n.Stats.discoveredOf(discoveredCount, availableWords.count))
+                        Text(L10n.Stats.discoveredOf(discoveredCount, summary.totalWordsAvailable))
                             .font(DesignTokens.typography.caption())
                             .foregroundStyle(DesignTokens.color.textLight)
-                    }
-                }
-
-                if !learnedWords.isEmpty {
-                    VStack(alignment: .leading, spacing: DesignTokens.spacing.sm) {
-                        Text(L10n.Stats.recentlyDiscovered)
-                            .font(DesignTokens.typography.caption(weight: .semibold))
-                            .foregroundStyle(DesignTokens.color.textSecondary)
-
-                        FlexibleChipView(words: learnedWords.suffix(6).map(\.word))
                     }
                 }
             }
@@ -177,11 +143,12 @@ struct StatsTab: View {
                     .fill(DesignTokens.color.cardBackground)
                     .designSystemShadow(DesignTokens.shadow.medium)
             )
-
         }
     }
 
-    // MARK: - Helpers
+    private func refreshSummary() {
+        summary = statsService.makeSummary(modelContext: modelContext)
+    }
 
     private func sectionLabel(_ title: String) -> some View {
         Text(title)
@@ -207,5 +174,5 @@ struct StatsTab: View {
 
 #Preview {
     StatsTab()
-        .modelContainer(for: [Word.self, UserProgress.self, ChatHistoryMessage.self], inMemory: true)
+        .modelContainer(for: [AppState.self, UserWordState.self], inMemory: true)
 }

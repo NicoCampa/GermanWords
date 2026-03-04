@@ -8,7 +8,7 @@
 import SwiftUI
 
 extension ContentView {
-    func todaysWordSection(_ word: Word) -> some View {
+    func todaysWordSection<WordType: WordDisplayable>(_ word: WordType) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             // MARK: Word Hero
             VStack(alignment: .leading, spacing: 10) {
@@ -163,7 +163,7 @@ extension ContentView {
     // MARK: - Compact Examples Card (shows 2 inline, "More" for rest)
 
     func compactExamplesCard(
-        word: Word,
+        word: some WordDisplayable,
         visiblePairs: [(String, String)],
         hasMore: Bool,
         showAll: Bool,
@@ -221,7 +221,7 @@ extension ContentView {
     // MARK: - Related words content (without outer card wrapper, for use in CollapsibleSection)
 
     @ViewBuilder
-    func relatedWordsContent(for word: Word) -> some View {
+    func relatedWordsContent<WordType: WordDisplayable>(for word: WordType) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(word.relatedWords, id: \.word) { entry in
                 relatedWordRowInline(entry: entry, accent: DesignTokens.color.relatedAccent)
@@ -270,7 +270,7 @@ extension ContentView {
     // MARK: - Conjugation Table
 
     @ViewBuilder
-    func conjugationTable(for word: Word) -> some View {
+    func conjugationTable<WordType: WordDisplayable>(for word: WordType) -> some View {
         let pairs = word.conjugationPairs
         if !pairs.isEmpty {
             VStack(spacing: 6) {

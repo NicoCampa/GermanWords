@@ -9,23 +9,28 @@ import Foundation
 import UserNotifications
 import SwiftData
 
+private let notificationWordIDKey = "notification_word_id"
+
 @MainActor
 @Observable
-class NotificationManager: NotificationManagerProtocol {
+class NotificationManager: NSObject, NotificationManagerProtocol {
     static let shared = NotificationManager()
     
     private let center = UNUserNotificationCenter.current()
+    private let selector = NotificationWordSelector()
     
     // Notification identifiers
     private let dailyWordIdentifier = "daily_word_notification"
-
     // Settings keys
     private let dailyNotificationTimeKey = "daily_notification_time"
 
     var isNotificationsEnabled = false
     var dailyNotificationTime = DateComponents(hour: 9, minute: 0)
+    private(set) var pendingNotificationWordID: String?
     
-    private init() {
+    private override init() {
+        super.init()
+        center.delegate = self
         loadSettings()
     }
     
@@ -116,20 +121,9 @@ class NotificationManager: NotificationManagerProtocol {
         print("🗑️ Cleared existing daily word notification")
         #endif
 
-        // Ensure context is fresh and valid
-        do {
-            try modelContext.save()
-        } catch {
-            #if DEBUG
-            print("❌ Failed to refresh model context: \(error)")
-            #endif
-            return
-        }
-
-        // Try to include the actual word in the notification
         let content: UNMutableNotificationContent
-        if let word = getSmartWordForNotification(from: modelContext) {
-            content = createDailyWordContent(for: word, modelContext: modelContext)
+        if let word = selector.selectWord(modelContext: modelContext, language: AppLanguage.sourceCode) {
+            content = createDailyWordContent(for: word)
         } else {
             let fallback = UNMutableNotificationContent()
             fallback.title = L10n.Notifications.dailyWordAwaits
@@ -163,7 +157,7 @@ class NotificationManager: NotificationManagerProtocol {
 
     // MARK: - Smart Content Generation
     
-    private func createDailyWordContent(for word: Word, modelContext: ModelContext) -> UNMutableNotificationContent {
+    private func createDailyWordContent(for word: CatalogWordDetail) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         
         // Personalized titles based on user progress
@@ -196,12 +190,14 @@ class NotificationManager: NotificationManagerProtocol {
         content.sound = .default
         content.badge = NSNumber(value: 1)
         content.categoryIdentifier = "DAILY_WORD"
+        content.targetContentIdentifier = word.id
+        content.userInfo = [notificationWordIDKey: word.id]
         
         return content
     }
 
     /// Generate a fun, emoji-rich notification message for words without custom messages
-    private func generateFunNotification(for word: Word) -> String {
+    private func generateFunNotification(for word: CatalogWordDetail) -> String {
         let w = word.word
         let t = word.localizedTranslation
         let zh = AppLanguage.activeTargetLanguage == .chinese
@@ -292,50 +288,6 @@ class NotificationManager: NotificationManagerProtocol {
         return shortFallbacks.randomElement() ?? shortFallback
     }
 
-    private func getSmartWordForNotification(from modelContext: ModelContext) -> Word? {
-        do {
-            let selectedLanguage = AppLanguage.sourceCode
-            let wordsInLanguage: [Word]
-            let descriptor = FetchDescriptor<Word>(
-                predicate: #Predicate { word in
-                    word.sourceLanguage == selectedLanguage
-                }
-            )
-            wordsInLanguage = try modelContext.fetch(descriptor)
-
-            guard !wordsInLanguage.isEmpty else {
-                #if DEBUG
-                print("⚠️ No words available for language \(selectedLanguage)")
-                #endif
-                return nil
-            }
-
-            let allWords = wordsInLanguage
-
-            let dueWords = allWords
-                .filter { $0.isDueForReview }
-                .sorted { ($0.srsDueDate ?? .distantFuture) < ($1.srsDueDate ?? .distantFuture) }
-            if let dueWord = dueWords.first {
-                return dueWord
-            }
-
-            // Prefer words that haven't been seen (timesViewed == 0)
-            let unseenWords = allWords.filter { $0.timesViewed == 0 }
-            if !unseenWords.isEmpty {
-                return unseenWords.randomElement()
-            }
-
-            // Otherwise prefer least-viewed words
-            return allWords.sorted { $0.timesViewed < $1.timesViewed }.first ?? allWords.randomElement()
-
-        } catch {
-            #if DEBUG
-            print("❌ Error fetching smart word: \(error)")
-            #endif
-            return nil
-        }
-    }
-
     private func removeLegacyNotificationsIfNeeded() async {
         let requests = await center.pendingNotificationRequests()
         let legacyIdentifiers = requests
@@ -355,6 +307,12 @@ class NotificationManager: NotificationManagerProtocol {
     func hasCurrentDailyWordNotification() async -> Bool {
         let requests = await center.pendingNotificationRequests()
         return requests.contains { $0.identifier == dailyWordIdentifier }
+    }
+
+    func consumePendingNotificationWordID() -> String? {
+        let wordID = pendingNotificationWordID
+        pendingNotificationWordID = nil
+        return wordID
     }
 
     // MARK: - Settings & Control
@@ -421,5 +379,27 @@ class NotificationManager: NotificationManagerProtocol {
             print("  - \(request.identifier): \(request.content.title)")
         }
         #endif
+    }
+}
+
+extension NotificationManager: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
+        guard let wordID = response.notification.request.content.userInfo[notificationWordIDKey] as? String,
+              !wordID.isEmpty else { return }
+
+        await MainActor.run {
+            pendingNotificationWordID = wordID
+        }
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound, .badge]
     }
 }

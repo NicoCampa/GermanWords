@@ -11,10 +11,9 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) var modelContext
     @Environment(\.scenePhase) var scenePhase
-    @Query var words: [Word]
-    @Query var userProgress: [UserProgress]
 
     @State var viewModel = HomeViewModel()
+    @State private var notificationManager = NotificationManager.shared
     @StateObject var speechSynthesizer = SpeechSynthesizerManager()
 
     @Binding var selectedTab: AppTab
@@ -26,6 +25,7 @@ struct ContentView: View {
     @State var xpGained = 0
     // Consolidated sheet state
     @State var activeSheet: HomeSheet?
+    @State private var hasInitializedHomeState = false
 
     // Phase 2: Collapsible sections (collapsed by default)
     @State var showAllExamples = false
@@ -33,49 +33,101 @@ struct ContentView: View {
     @State var relatedWordsExpanded = false
     @State var conjugationExpanded = false
 
-    // ScrollViewProxy for FAB scroll-to-top
-    @State var scrollProxy: ScrollViewProxy?
+    @State private var wordFeed: [LearnWordPayload] = []
+    @State private var currentWordIndex = 0
+    @State private var currentWordID: String?
+    @State private var canLoadMoreWords = false
+    @State private var isLoadingNextWord = false
+    @State private var selectedPageByWordID: [String: WordCardPageKind] = [:]
+    @State private var statsStripHeight: CGFloat = 0
+    @State private var hasTriggeredBottomOverscrollLoad = false
 
-    var todaysWord: Word? { viewModel.todaysWord }
-    var currentProgress: UserProgress { viewModel.currentProgress }
-    var availableWords: [Word] { viewModel.availableWords }
-    var wordsSeenToday: [Word] { viewModel.wordsSeenToday }
-    var learnedWords: [Word] { viewModel.learnedWords }
+    var todaysWord: LearnWordPayload? { viewModel.todaysWord }
+    var activeWord: LearnWordPayload? {
+        if let currentWordID,
+           let resolvedWord = wordFeed.first(where: { $0.id == currentWordID }) {
+            return resolvedWord
+        }
+
+        guard wordFeed.indices.contains(currentWordIndex) else {
+            return wordFeed.last ?? todaysWord
+        }
+
+        return wordFeed[currentWordIndex]
+    }
+    var currentProgress: AppState { viewModel.currentProgress }
+    var hasAvailableWords: Bool { viewModel.availableWordCount > 0 }
+    var canAdvanceWordFeed: Bool {
+        currentWordIndex < wordFeed.count - 1 || (canLoadMoreWords && hasAvailableWords)
+    }
 
     var scrollableHome: some View {
         GeometryReader { geometry in
-            ScrollViewReader { proxy in
-                ScrollView(.vertical, showsIndicators: false) {
-                    homeSections
-                        .frame(width: geometry.size.width)
-                        .frame(maxWidth: .infinity, alignment: .top)
+            let bottomReserved = max(geometry.safeAreaInsets.bottom, 20) + 96
+            let availableHeight = max(geometry.size.height - statsStripHeight - 26 - bottomReserved, 280)
+
+            VStack(spacing: 14) {
+                compactStatsStrip
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear
+                                .preference(key: HomeStatsStripHeightPreferenceKey.self, value: proxy.size.height)
+                        }
+                    )
+
+                if wordFeed.isEmpty {
+                    Spacer(minLength: 0)
+                    noWordsSection
+                    Spacer(minLength: 0)
+                } else {
+                    verticalWordFeed(cardHeight: availableHeight)
+                        .frame(height: availableHeight)
                 }
-                .scrollBounceBehavior(.basedOnSize)
-                .onAppear { scrollProxy = proxy }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
+        .onPreferenceChange(HomeStatsStripHeightPreferenceKey.self) { statsStripHeight = $0 }
     }
 
-    var homeSections: some View {
-        VStack(spacing: 14) {
-            Color.clear.frame(height: 0).id("top")
-
-            // Compact stats strip
-            compactStatsStrip
-
-            if let word = todaysWord {
-                todaysWordSection(word)
+    private func verticalWordFeed(cardHeight: CGFloat) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: 0) {
+                ForEach(wordFeed) { word in
+                    HomeWordCardView(
+                        word: word,
+                        selectedPage: pageSelectionBinding(for: word),
+                        speechSynthesizer: speechSynthesizer,
+                        isPronunciationActive: showingPronunciation && activeWord?.id == word.id,
+                        onPronounce: {
+                            focusWord(id: word.id, animated: false)
+                            pronounceWord()
+                        }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 20)
+                    .frame(height: cardHeight)
+                    .clipped()
                     .id(word.id)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            } else {
-                noWordsSection
+                }
             }
+            .scrollTargetLayout()
         }
-        .padding(.bottom, 20)
-        .clipped()
+        .scrollIndicators(.hidden)
+        .scrollTargetBehavior(.paging)
+        .scrollPosition(id: $currentWordID)
+        .onAppear(perform: syncCurrentWordIDWithFeed)
+        .onChange(of: currentWordID) { _, newWordID in
+            syncCurrentWordIndex(for: newWordID)
+        }
+        .onScrollGeometryChange(for: PagerOverscrollState.self) { geometry in
+            let bottomOverscroll = max(
+                0,
+                geometry.contentOffset.y + geometry.visibleRect.height - geometry.contentSize.height
+            )
+            return PagerOverscrollState(bottomOverscroll: bottomOverscroll)
+        } action: { _, state in
+            handlePagerOverscroll(state.bottomOverscroll)
+        }
     }
 
     var achievementOverlay: some View {
@@ -123,16 +175,36 @@ struct ContentView: View {
                 scrollableHome
             }
             .overlay(alignment: .bottomTrailing) {
-                ZStack(alignment: .bottomTrailing) {
-                    floatingNextButton
-                    if showingXPAnimation {
-                        XPPopupView(xpAmount: xpGained)
-                            .transition(.asymmetric(
-                                insertion: .scale.combined(with: .opacity),
-                                removal: .opacity
-                            ))
-                            .padding(.bottom, 70)
-                            .padding(.trailing, 16)
+                if showingXPAnimation {
+                    XPPopupView(xpAmount: xpGained)
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal: .opacity
+                        ))
+                        .padding(.bottom, 70)
+                        .padding(.trailing, 16)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Text(L10n.Tabs.learn)
+                        .font(DesignTokens.typography.callout(weight: .bold))
+                        .foregroundStyle(DesignTokens.color.headingPrimary)
+                }
+
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    topBarActionButton(
+                        icon: "magnifyingglass",
+                        label: L10n.Tabs.browse
+                    ) {
+                        selectedTab = .browse
+                    }
+
+                    topBarActionButton(
+                        icon: "gearshape.fill",
+                        label: L10n.Tabs.settings
+                    ) {
+                        selectedTab = .settings
                     }
                 }
             }
@@ -150,19 +222,23 @@ struct ContentView: View {
         let baseView = rootNavigationView.overlay(achievementOverlay)
         return applyHomeSheets(to: baseView)
             .onAppear {
-                syncHomeState()
-                currentProgress.loadInitialDataIfNeeded(modelContext: modelContext)
-                try? modelContext.save()
+                performInitialHomeSetupIfNeeded()
+                openPendingNotificationWordIfNeeded()
             }
-            .onChange(of: words) {
-                syncHomeState()
+            .onChange(of: notificationManager.pendingNotificationWordID) { _, _ in
+                openPendingNotificationWordIfNeeded()
             }
-            .onChange(of: userProgress) {
-                syncHomeState()
+            .onChange(of: selectedTab) { _, newTab in
+                guard newTab == .learn else { return }
+                if hasInitializedHomeState {
+                    syncHomeState()
+                } else {
+                    performInitialHomeSetupIfNeeded()
+                }
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
-                    viewModel.refreshDailyWordIfNeeded()
+                    syncHomeState()
                 }
             }
     }
@@ -171,8 +247,6 @@ struct ContentView: View {
         view
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
-                case .chat:
-                    ChatView(word: todaysWord, isSheet: true)
                 case .stats:
                     NavigationStack {
                         StatsTab()
@@ -189,18 +263,243 @@ struct ContentView: View {
     }
 
     func syncHomeState() {
-        viewModel.sync(modelContext: modelContext, words: words, userProgress: userProgress)
+        viewModel.sync(modelContext: modelContext)
+        refreshWordFeedFromViewModel()
+    }
+
+    func performInitialHomeSetupIfNeeded() {
+        guard !hasInitializedHomeState else { return }
+
+        hasInitializedHomeState = true
+        syncHomeState()
+    }
+
+    private func refreshWordFeedFromViewModel() {
+        guard let latestWord = viewModel.todaysWord else {
+            wordFeed = []
+            currentWordIndex = 0
+            currentWordID = nil
+            canLoadMoreWords = false
+            selectedPageByWordID.removeAll()
+            return
+        }
+
+        canLoadMoreWords = viewModel.availableWordCount > 1
+        let previousVisibleWordID = currentWordID
+
+        if let existingIndex = wordFeed.firstIndex(where: { $0.id == latestWord.id }) {
+            ensurePageState(for: wordFeed[existingIndex])
+
+            if let previousVisibleWordID,
+               let previousVisibleIndex = wordFeed.firstIndex(where: { $0.id == previousVisibleWordID }) {
+                currentWordIndex = previousVisibleIndex
+                currentWordID = previousVisibleWordID
+            } else {
+                currentWordIndex = existingIndex
+                currentWordID = latestWord.id
+            }
+
+            return
+        }
+
+        if wordFeed.isEmpty {
+            wordFeed = [latestWord]
+            ensurePageState(for: latestWord)
+            currentWordIndex = 0
+            currentWordID = latestWord.id
+            return
+        }
+
+        wordFeed.append(latestWord)
+        ensurePageState(for: latestWord)
+        currentWordIndex = wordFeed.count - 1
+        currentWordID = latestWord.id
+        hasTriggeredBottomOverscrollLoad = false
+    }
+
+    private func requestAndShowNextWord() {
+        guard canLoadMoreWords && hasAvailableWords else {
+            return
+        }
+        guard !isLoadingNextWord else { return }
+
+        isLoadingNextWord = true
+        let currentWordID = activeWord?.id
+        handleNewWordRequest()
+        isLoadingNextWord = false
+
+        guard let latestWord = viewModel.todaysWord else {
+            canLoadMoreWords = false
+            return
+        }
+
+        canLoadMoreWords = viewModel.availableWordCount > 1
+
+        if let existingIndex = wordFeed.firstIndex(where: { $0.id == latestWord.id }) {
+            focusWord(at: existingIndex, animated: true)
+            return
+        }
+
+        guard latestWord.id != currentWordID else {
+            return
+        }
+
+        if wordFeed.last?.id != latestWord.id {
+            wordFeed.append(latestWord)
+            ensurePageState(for: latestWord)
+        }
+
+        focusWord(at: wordFeed.count - 1, animated: true)
+    }
+
+    private func openPendingNotificationWordIfNeeded() {
+        guard let wordID = notificationManager.consumePendingNotificationWordID() else { return }
+
+        if !hasInitializedHomeState {
+            performInitialHomeSetupIfNeeded()
+        }
+
+        selectedTab = .learn
+        viewModel.presentWord(id: wordID)
+        refreshWordFeedFromViewModel()
+        if let targetWord = wordFeed.first(where: { $0.id == wordID }) {
+            resetPageState(for: targetWord)
+        }
+        focusWord(id: wordID, animated: false)
+    }
+
+    private func handlePagerOverscroll(_ bottomOverscroll: CGFloat) {
+        guard currentWordIndex == wordFeed.count - 1 else {
+            hasTriggeredBottomOverscrollLoad = false
+            return
+        }
+
+        guard canLoadMoreWords && hasAvailableWords else { return }
+
+        if bottomOverscroll < 12 {
+            hasTriggeredBottomOverscrollLoad = false
+            return
+        }
+
+        guard bottomOverscroll > 72 else { return }
+        guard !hasTriggeredBottomOverscrollLoad else { return }
+
+        hasTriggeredBottomOverscrollLoad = true
+        requestAndShowNextWord()
+    }
+
+    private func syncCurrentWordIDWithFeed() {
+        guard !wordFeed.isEmpty else {
+            currentWordID = nil
+            return
+        }
+
+        if let currentWordID, wordFeed.contains(where: { $0.id == currentWordID }) {
+            return
+        }
+
+        currentWordID = wordFeed[safe: currentWordIndex]?.id ?? wordFeed.first?.id
+    }
+
+    private func syncCurrentWordIndex(for wordID: String?) {
+        guard let wordID,
+              let index = wordFeed.firstIndex(where: { $0.id == wordID }) else { return }
+
+        currentWordIndex = index
+        ensurePageState(for: wordFeed[index])
+        hasTriggeredBottomOverscrollLoad = false
+    }
+
+    private func focusWord(at index: Int, animated: Bool) {
+        guard wordFeed.indices.contains(index) else { return }
+        let wordID = wordFeed[index].id
+
+        currentWordIndex = index
+        hasTriggeredBottomOverscrollLoad = false
+
+        if animated {
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
+                currentWordID = wordID
+            }
+        } else {
+            currentWordID = wordID
+        }
+    }
+
+    private func focusWord(id wordID: String, animated: Bool) {
+        guard let index = wordFeed.firstIndex(where: { $0.id == wordID }) else { return }
+        focusWord(at: index, animated: animated)
+    }
+
+    private func pageSelectionBinding(for word: LearnWordPayload) -> Binding<WordCardPageKind> {
+        Binding {
+            let availableKinds = Set(wordCardPages(for: word).map(\.kind))
+            let storedPage = selectedPageByWordID[word.id]
+            return storedPage.flatMap { availableKinds.contains($0) ? $0 : nil } ?? defaultWordCardPageKind(for: word)
+        } set: { newValue in
+            selectedPageByWordID[word.id] = newValue
+        }
+    }
+
+    private func ensurePageState(for word: LearnWordPayload) {
+        let availableKinds = Set(wordCardPages(for: word).map(\.kind))
+        if let selectedPage = selectedPageByWordID[word.id], availableKinds.contains(selectedPage) {
+            return
+        }
+
+        selectedPageByWordID[word.id] = defaultWordCardPageKind(for: word)
+    }
+
+    private func resetPageState(for word: LearnWordPayload) {
+        selectedPageByWordID[word.id] = defaultWordCardPageKind(for: word)
+    }
+
+    @ViewBuilder
+    private func topBarActionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(DesignTokens.color.headingPrimary)
+                .frame(width: 40, height: 40)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.white.opacity(0.76))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.white.opacity(0.88), lineWidth: 1)
+                        )
+                )
+                .shadow(color: Color(red: 0.19, green: 0.37, blue: 0.72).opacity(0.1), radius: 12, x: 0, y: 6)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel(label)
     }
 
 }
 
+private struct PagerOverscrollState: Equatable {
+    let bottomOverscroll: CGFloat
+}
+
+private struct HomeStatsStripHeightPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+
 enum HomeSheet: Identifiable, Equatable {
-    case chat
     case stats
 
     var id: String {
         switch self {
-        case .chat: return "chat"
         case .stats: return "stats"
         }
     }
@@ -224,5 +523,5 @@ enum ProgressStat: String, Identifiable {
 
 #Preview {
     ContentView(selectedTab: .constant(.learn))
-        .modelContainer(for: [Word.self, UserProgress.self, ChatHistoryMessage.self], inMemory: true)
+        .modelContainer(for: [AppState.self, UserWordState.self], inMemory: true)
 }

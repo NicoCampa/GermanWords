@@ -9,7 +9,7 @@ import SwiftUI
 
 extension ContentView {
     func pronounceWord(style: SpeechPlaybackStyle = .normal) {
-        guard let word = todaysWord else { return }
+        guard let word = activeWord else { return }
 
         FirebaseAnalyticsManager.shared.logWordListened(
             word: word.word,
@@ -35,17 +35,10 @@ extension ContentView {
 
     func handleNewWordRequest() {
         FirebaseAnalyticsManager.shared.logNewWordRequested(language: AppLanguage.sourceCode)
-
-        let previousWord = viewModel.prepareWordTransition()
-
-        if previousWord != nil || (todaysWord == nil && !availableWords.isEmpty) {
-            viewModel.completeWordTransition(
-                word: previousWord,
-                quality: 3,
-                onXPGained: { xp in triggerXPGainAnimation(amount: xp) },
-                onAchievement: { msg in showAchievementToast(msg) }
-            )
-        }
+        viewModel.requestNewWord(
+            onXPGained: { xp in triggerXPGainAnimation(amount: xp) },
+            onAchievement: { msg in showAchievementToast(msg) }
+        )
     }
 
     func triggerXPGainAnimation(amount: Int) {

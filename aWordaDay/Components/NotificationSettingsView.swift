@@ -441,5 +441,5 @@ struct TimePickerView: View {
 
 #Preview {
     NotificationSettingsView()
-        .modelContainer(for: [Word.self, UserProgress.self, ChatHistoryMessage.self], inMemory: true)
+        .modelContainer(for: [AppState.self, UserWordState.self], inMemory: true)
 }
