@@ -115,15 +115,16 @@ struct StatsTab: View {
 
     private var learnedSection: some View {
         let discoveredCount = summary.discoveredCount
-        let masteredCount = summary.appState.totalWordsLearned
+        let discoveredValue: String
+        if summary.totalWordsAvailable > 0 {
+            discoveredValue = "\(discoveredCount) / \(summary.totalWordsAvailable)"
+        } else {
+            discoveredValue = "\(discoveredCount)"
+        }
 
         return VStack(spacing: DesignTokens.spacing.lg) {
             VStack(alignment: .leading, spacing: DesignTokens.spacing.lg) {
-                HStack(spacing: DesignTokens.spacing.xl) {
-                    statColumn(value: "\(discoveredCount)", label: L10n.Stats.discovered)
-                    statColumn(value: "\(masteredCount)", label: L10n.Stats.mastered)
-                    statColumn(value: "\(summary.appState.totalXP)", label: L10n.Stats.xp)
-                }
+                statColumn(value: discoveredValue, label: L10n.Stats.discovered)
 
                 if summary.totalWordsAvailable > 0 {
                     let ratio = Double(discoveredCount) / Double(max(summary.totalWordsAvailable, 1))

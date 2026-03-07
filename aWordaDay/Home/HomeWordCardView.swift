@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct HomeWordCardView<WordType: WordDisplayable>: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let word: WordType
     @Binding var selectedPage: WordCardPageKind
     @ObservedObject var speechSynthesizer: SpeechSynthesizerManager
@@ -36,16 +38,17 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 22)
-        .padding(.top, 22)
+        .padding(.top, 18)
         .padding(.bottom, 18)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white,
-                            Color(red: 0.975, green: 0.985, blue: 1.0)
+                            DesignTokens.color.surfaceElevated,
+                            DesignTokens.color.surfaceInset
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -53,9 +56,9 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color(red: 0.83, green: 0.89, blue: 0.97), lineWidth: 1)
+                        .stroke(DesignTokens.color.surfaceStroke, lineWidth: 1)
                 )
-                .shadow(color: Color(red: 0.16, green: 0.28, blue: 0.54).opacity(0.1), radius: 20, x: 0, y: 12)
+                .shadow(color: DesignTokens.color.panelShadow, radius: 20, x: 0, y: 12)
         )
         .onAppear(perform: sanitizeSelectedPage)
         .onChange(of: pageKinds) { _, _ in
@@ -64,11 +67,9 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
     }
 
     private var heroSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 14) {
                 VStack(alignment: .leading, spacing: 12) {
-                    headerEyebrow
-
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         if let article = word.displayArticle {
                             Text(article)
@@ -92,16 +93,12 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                 Spacer(minLength: 0)
 
                 Button(action: onPronounce) {
-                    VStack(spacing: 4) {
-                        Image(systemName: "speaker.wave.2.fill")
-                            .font(.system(size: 18, weight: .bold))
-                        Text("Audio")
-                            .font(DesignTokens.typography.footnote(weight: .bold))
-                    }
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 21, weight: .bold))
                     .foregroundStyle(isPronunciationActive ? Color.white : DesignTokens.color.headingPrimary)
-                    .frame(width: 60, height: 60)
+                    .frame(width: 52, height: 52)
                     .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .fill(
                                 isPronunciationActive
                                 ? AnyShapeStyle(
@@ -114,14 +111,14 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                : AnyShapeStyle(Color(red: 0.96, green: 0.975, blue: 1.0))
+                                : AnyShapeStyle(DesignTokens.color.surfaceInset)
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
                                     .stroke(
                                         isPronunciationActive
                                         ? Color.white.opacity(0.22)
-                                        : Color(red: 0.84, green: 0.89, blue: 0.97),
+                                        : DesignTokens.color.surfaceStroke,
                                         lineWidth: 1
                                     )
                             )
@@ -159,18 +156,6 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
         .padding(.bottom, 2)
     }
 
-    private var headerEyebrow: some View {
-        HStack(spacing: 8) {
-            Text("Word of the day")
-                .font(DesignTokens.typography.footnote(weight: .bold))
-                .foregroundStyle(DesignTokens.color.textSecondary.opacity(0.8))
-
-            Capsule()
-                .fill(selectedPageModel.accent.opacity(0.18))
-                .frame(width: 28, height: 8)
-        }
-    }
-
     private var pageHeader: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
@@ -194,7 +179,7 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                                                 endPoint: .trailing
                                             )
                                         )
-                                        : AnyShapeStyle(Color(red: 0.95, green: 0.96, blue: 0.985))
+                                        : AnyShapeStyle(DesignTokens.color.surfaceInset)
                                     )
                             )
                     }
@@ -208,9 +193,9 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
     private var pageDots: some View {
         HStack(spacing: 8) {
             ForEach(pages) { page in
-                Capsule()
-                    .fill(page.kind == selectedPage ? selectedPageModel.accent : DesignTokens.color.textMuted.opacity(0.22))
-                    .frame(width: page.kind == selectedPage ? 18 : 6, height: 6)
+            Capsule()
+                .fill(page.kind == selectedPage ? selectedPageModel.accent : DesignTokens.color.textMuted.opacity(colorScheme == .dark ? 0.42 : 0.3))
+                .frame(width: page.kind == selectedPage ? 18 : 6, height: 6)
             }
         }
         .frame(maxWidth: .infinity)
@@ -254,8 +239,8 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white,
-                            accent.opacity(0.08)
+                            DesignTokens.color.sectionBackground,
+                            accent.opacity(colorScheme == .dark ? 0.18 : 0.14)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -263,18 +248,21 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(accent.opacity(0.12), lineWidth: 1)
+                        .stroke(accent.opacity(colorScheme == .dark ? 0.2 : 0.18), lineWidth: 1)
                 )
         )
     }
 
     private var examplesPage: some View {
-        let visiblePairs = Array(word.localizedExamplePairs.prefix(2))
+        let visiblePairs = Array(word.localizedExamplePairs.prefix(3))
         let highlightColor = wordCardGenderColor(for: word) ?? DesignTokens.color.skyBlue
 
-        return VStack(alignment: .leading, spacing: 12) {
+        return ScrollView(.vertical, showsIndicators: false) {
             exampleRows(for: visiblePairs, highlightColor: highlightColor)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 2)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
     }
 
     private func exampleRows(for pairs: [(String, String)], highlightColor: Color) -> some View {
@@ -296,11 +284,13 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
         let text = word.localizedCuriosityFacts?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return ScrollView(.vertical, showsIndicators: false) {
             Text(text)
-                .font(DesignTokens.typography.callout(weight: .medium))
+                .font(DesignTokens.typography.caption(weight: .medium))
                 .foregroundStyle(DesignTokens.color.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 2)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
     }
 
     private var usageNotesPage: some View {
@@ -308,13 +298,20 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
         return ScrollView(.vertical, showsIndicators: false) {
             timelineRows(for: allEntries, accent: WordCardPageKind.usageNotes.accent)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 2)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
     }
 
     private func timelineRows(for entries: [String], accent: Color) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
-                TimelineRow(text: entry, accent: accent, isLast: index == entries.count - 1)
+                TimelineRow(
+                    text: entry,
+                    accent: accent,
+                    isLast: index == entries.count - 1,
+                    showsMarker: false
+                )
             }
         }
     }
@@ -324,7 +321,9 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
         return ScrollView(.vertical, showsIndicators: false) {
             relatedWordRows(for: allEntries)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 2)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
     }
 
     private func relatedWordRows(for entries: [RelatedWordEntry]) -> some View {
@@ -349,7 +348,7 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                 .padding(.vertical, 12)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(WordCardPageKind.relatedWords.accent.opacity(0.08))
+                        .fill(WordCardPageKind.relatedWords.accent.opacity(colorScheme == .dark ? 0.18 : 0.14))
                 )
             }
         }
@@ -360,43 +359,61 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
         return ScrollView(.vertical, showsIndicators: false) {
             conjugationRows(for: allPairs)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 2)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
     }
 
     private func conjugationRows(for pairs: [(pronoun: String, form: String)]) -> some View {
-        VStack(spacing: 8) {
-            ForEach(Array(pairs.enumerated()), id: \.offset) { _, pair in
-                HStack(spacing: 12) {
-                    Text(pair.pronoun)
-                        .font(DesignTokens.typography.caption(weight: .medium))
-                        .foregroundStyle(DesignTokens.color.textTertiary)
-                        .frame(width: 82, alignment: .trailing)
+        let singularCount = (pairs.count + 1) / 2
+        let singularPairs = Array(pairs.prefix(singularCount))
+        let pluralPairs = Array(pairs.dropFirst(singularCount))
 
-                    Text(pair.form)
-                        .font(DesignTokens.typography.callout(weight: .semibold))
-                        .foregroundStyle(DesignTokens.color.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+        return VStack(spacing: 10) {
+            ForEach(singularPairs.indices, id: \.self) { index in
+                HStack(alignment: .top, spacing: 10) {
+                    conjugationCell(for: singularPairs[index])
+
+                    if pluralPairs.indices.contains(index) {
+                        conjugationCell(for: pluralPairs[index])
+                    } else {
+                        Color.clear
+                            .frame(maxWidth: .infinity, minHeight: 58)
+                    }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(WordCardPageKind.conjugation.accent.opacity(0.08))
-                )
             }
         }
     }
 
-    private var detailsFallbackPage: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.WordDetail.noAdditionalDetails)
-                .font(DesignTokens.typography.callout(weight: .medium))
-                .foregroundStyle(DesignTokens.color.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+    private func conjugationCell(for pair: (pronoun: String, form: String)) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(pair.pronoun)
+                .font(DesignTokens.typography.caption(weight: .medium))
+                .foregroundStyle(DesignTokens.color.textTertiary)
+                .lineLimit(1)
 
-            Spacer(minLength: 0)
+            Text(pair.form)
+                .font(DesignTokens.typography.callout(weight: .semibold))
+                .foregroundStyle(DesignTokens.color.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(WordCardPageKind.conjugation.accent.opacity(colorScheme == .dark ? 0.18 : 0.14))
+        )
+    }
+
+    private var detailsFallbackPage: some View {
+        Text(L10n.WordDetail.noAdditionalDetails)
+            .font(DesignTokens.typography.callout(weight: .medium))
+            .foregroundStyle(DesignTokens.color.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func inlineChip(text: String, color: Color) -> some View {
@@ -407,10 +424,10 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
             .padding(.vertical, 7)
             .background(
                 Capsule()
-                    .fill(color.opacity(0.1))
+                    .fill(color.opacity(colorScheme == .dark ? 0.2 : 0.16))
                     .overlay(
                         Capsule()
-                            .stroke(color.opacity(0.08), lineWidth: 1)
+                            .stroke(color.opacity(colorScheme == .dark ? 0.16 : 0.14), lineWidth: 1)
                     )
             )
     }

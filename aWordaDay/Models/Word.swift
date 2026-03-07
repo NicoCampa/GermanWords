@@ -196,18 +196,10 @@ extension Word {
     // MARK: - Localized Accessors (fall back to English if Chinese is nil)
 
     var localizedTranslation: String {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let zh = translationZh, !zh.isEmpty {
-            return zh
-        }
         return translation
     }
 
     var localizedExampleTranslations: [String] {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let zh = exampleTranslationsZh, !zh.isEmpty {
-            return zh
-        }
         return exampleTranslations
     }
 
@@ -220,26 +212,14 @@ extension Word {
     }
 
     var localizedCuriosityFacts: String? {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let zh = curiosityFactsZh, !zh.isEmpty {
-            return zh
-        }
         return curiosityFacts
     }
 
     var localizedUsageNotes: String? {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let zh = usageNotesZh, !zh.isEmpty {
-            return zh
-        }
         return usageNotes
     }
 
     var localizedNotificationMessage: String? {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let zh = notificationMessageZh, !zh.isEmpty {
-            return zh
-        }
         return notificationMessage
     }
 

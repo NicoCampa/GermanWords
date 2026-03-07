@@ -38,8 +38,11 @@ struct MainAppView: View {
 
         let appState = currentAppState
 
-        // Restore the user's target language preference
-        AppLanguage.activeTargetLanguage = appState.targetLanguage
+        if appState.targetLanguageCode != TargetLanguage.english.rawValue {
+            appState.targetLanguage = .english
+            try? modelContext.save()
+        }
+        AppLanguage.activeTargetLanguage = .english
 
         #if DEBUG
         print("[Startup] onboardingComplete=\(appState.hasCompletedOnboarding), targetLanguage=\(AppLanguage.activeTargetLanguage.displayName)")
@@ -68,10 +71,7 @@ struct MainAppView: View {
                     await notificationManager.scheduleDailyWordNotification(with: modelContext)
                 }
             } else if status == .authorized || status == .provisional {
-                let hasCurrentDaily = await notificationManager.hasCurrentDailyWordNotification()
-                if !hasCurrentDaily {
-                    await notificationManager.scheduleDailyWordNotification(with: modelContext)
-                }
+                await notificationManager.scheduleDailyWordNotification(with: modelContext)
             }
         }
     }

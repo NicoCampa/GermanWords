@@ -74,7 +74,6 @@ struct OnboardingWelcomePage: View {
     @Query private var appStates: [AppState]
 
     @State private var mascotScale: CGFloat = 0.8
-    @State private var selectedTargetLanguage: TargetLanguage = .english
     @Binding var selectedDifficulty: Int?
     @Binding var allowMixed: Bool
     let onContinue: () -> Void
@@ -171,53 +170,6 @@ struct OnboardingWelcomePage: View {
                 )
                 .padding(.horizontal, DesignTokens.spacing.lg2)
 
-                // Language selector
-                HStack(spacing: DesignTokens.spacing.md) {
-                    Text(L10n.Onboarding.explanationsIn)
-                        .font(DesignTokens.typography.callout(weight: .semibold))
-                        .foregroundStyle(DesignTokens.color.textPrimary)
-
-                    Spacer()
-
-                    Menu {
-                        ForEach(TargetLanguage.allCases, id: \.self) { lang in
-                            Button {
-                                selectedTargetLanguage = lang
-                            } label: {
-                                HStack {
-                                    Text("\(lang.flagEmoji) \(lang.displayName)")
-                                    if selectedTargetLanguage == lang {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("\(selectedTargetLanguage.flagEmoji) \(selectedTargetLanguage.displayName)")
-                                .font(DesignTokens.typography.callout(weight: .semibold))
-                                .foregroundStyle(DesignTokens.color.primary)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(DesignTokens.color.primary)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, DesignTokens.spacing.sm)
-                        .background(
-                            Capsule()
-                                .fill(DesignTokens.color.primary.opacity(0.1))
-                        )
-                    }
-                }
-                .padding(.horizontal, DesignTokens.spacing.xl)
-                .padding(.vertical, DesignTokens.spacing.lg)
-                .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg)
-                        .fill(DesignTokens.color.sectionBackground)
-                        .designSystemShadow(DesignTokens.shadow.light)
-                )
-                .padding(.horizontal, DesignTokens.spacing.lg2)
-
                 // Continue button
                 Button(action: {
                     saveDifficultyPreference()
@@ -257,8 +209,8 @@ struct OnboardingWelcomePage: View {
         let progress = AppState.current(in: modelContext, cached: appStates)
         progress.preferredDifficultyLevel = selectedDifficulty
         progress.allowMixedDifficulty = allowMixed
-        progress.targetLanguage = selectedTargetLanguage
-        AppLanguage.activeTargetLanguage = selectedTargetLanguage
+        progress.targetLanguage = .english
+        AppLanguage.activeTargetLanguage = .english
         try? modelContext.save()
     }
 }

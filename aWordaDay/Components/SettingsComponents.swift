@@ -13,14 +13,8 @@ struct SettingsView: View {
 
     @State private var showingNotificationSettings = false
     @State private var showingDifficultyPicker = false
-    @State private var showingLanguagePicker = false
     @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
     @State private var hasScheduledReminder = false
-
-    private var currentLanguageLabel: String {
-        let language = currentProgress.targetLanguage
-        return "\(language.flagEmoji) \(language.displayName)"
-    }
 
     private var reminderEnabled: Bool {
         switch notificationPermissionStatus {
@@ -102,13 +96,6 @@ struct SettingsView: View {
                 onDismiss: { showingDifficultyPicker = false }
             )
         }
-        .sheet(isPresented: $showingLanguagePicker) {
-            LanguagePickerSheet(
-                currentProgress: currentProgress,
-                modelContext: modelContext,
-                onDismiss: { showingLanguagePicker = false }
-            )
-        }
     }
 
     private var learningCard: some View {
@@ -128,17 +115,6 @@ struct SettingsView: View {
                         subtitle: L10n.Settings.difficultyPickerDesc,
                         value: getDifficultyDisplayName(),
                         action: { showingDifficultyPicker = true }
-                    )
-
-                    Divider()
-
-                    SettingsNavigationRow(
-                        icon: "globe.europe.africa.fill",
-                        tint: DesignTokens.color.translationBlue,
-                        title: L10n.Settings.displayLanguage,
-                        subtitle: L10n.Settings.languagePickerDesc,
-                        value: currentLanguageLabel,
-                        action: { showingLanguagePicker = true }
                     )
                 }
             }
@@ -792,154 +768,6 @@ struct DifficultyPickerSheet: View {
             try modelContext.save()
         } catch {
             print("Error saving difficulty preference: \(error)")
-        }
-    }
-}
-
-// MARK: - Language Picker Sheet
-
-struct LanguagePickerSheet: View {
-    let currentProgress: AppState
-    let modelContext: ModelContext
-    let onDismiss: () -> Void
-
-    @State private var selectedLanguage: TargetLanguage = .english
-
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: DesignTokens.spacing.xl) {
-                        VStack(spacing: DesignTokens.spacing.md) {
-                            Text(L10n.Settings.languagePickerDesc)
-                                .font(DesignTokens.typography.callout(weight: .medium))
-                                .foregroundStyle(DesignTokens.color.textSubtle)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, DesignTokens.spacing.lg2)
-                        }
-                        .padding(.top, DesignTokens.spacing.lg)
-
-                        VStack(spacing: DesignTokens.spacing.lg) {
-                            ForEach(TargetLanguage.allCases, id: \.self) { language in
-                                Button(action: { selectedLanguage = language }) {
-                                    HStack(spacing: DesignTokens.spacing.lg) {
-                                        Text(language.flagEmoji)
-                                            .font(.system(size: 32))
-
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(language.displayName)
-                                                .font(DesignTokens.typography.callout(weight: .bold))
-                                                .foregroundStyle(DesignTokens.color.textPrimary)
-
-                                            Text(language.nativeName)
-                                                .font(DesignTokens.typography.caption(weight: .medium))
-                                                .foregroundStyle(DesignTokens.color.textLight)
-                                        }
-
-                                        Spacer()
-
-                                        if selectedLanguage == language {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.system(size: 24, weight: .semibold))
-                                                .foregroundStyle(DesignTokens.color.primary)
-                                        } else {
-                                            Circle()
-                                                .stroke(DesignTokens.color.textMuted, lineWidth: 2)
-                                                .frame(width: 24, height: 24)
-                                        }
-                                    }
-                                    .padding(DesignTokens.spacing.lg)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous)
-                                            .fill(selectedLanguage == language
-                                                ? DesignTokens.color.primary.opacity(0.08)
-                                                : DesignTokens.color.sectionBackground)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous)
-                                                    .stroke(
-                                                        selectedLanguage == language
-                                                            ? DesignTokens.color.primary.opacity(0.3)
-                                                            : Color.clear,
-                                                        lineWidth: 2
-                                                    )
-                                            )
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal, DesignTokens.spacing.lg2)
-                    }
-                    .padding(.bottom, 100)
-                }
-
-                VStack(spacing: 0) {
-                    Divider()
-
-                    Button(action: {
-                        saveLanguagePreference()
-                        onDismiss()
-                    }) {
-                        HStack(spacing: 10) {
-                            Text(L10n.Common.save)
-                                .font(DesignTokens.typography.headline(weight: .bold))
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, DesignTokens.spacing.lg)
-                        .background(
-                            LinearGradient(
-                                colors: [DesignTokens.color.info, DesignTokens.color.primary],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous))
-                            .shadow(color: DesignTokens.color.primary.opacity(0.3), radius: 12, x: 0, y: 6)
-                        )
-                    }
-                    .padding(.horizontal, DesignTokens.spacing.lg2)
-                    .padding(.vertical, DesignTokens.spacing.lg)
-                }
-                .background(DesignTokens.color.backgroundLight)
-            }
-            .background(
-                LinearGradient(
-                    colors: [
-                        DesignTokens.color.backgroundLight,
-                        DesignTokens.color.backgroundMedium
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-            )
-            .navigationTitle(L10n.Settings.displayLanguage)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(L10n.Common.cancel) {
-                        onDismiss()
-                    }
-                    .font(DesignTokens.typography.callout(weight: .semibold))
-                    .foregroundStyle(DesignTokens.color.primary)
-                }
-            }
-        }
-        .onAppear {
-            selectedLanguage = currentProgress.targetLanguage
-        }
-    }
-
-    private func saveLanguagePreference() {
-        currentProgress.targetLanguage = selectedLanguage
-        AppLanguage.activeTargetLanguage = selectedLanguage
-
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error saving language preference: \(error)")
         }
     }
 }

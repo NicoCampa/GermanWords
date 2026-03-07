@@ -41,6 +41,7 @@ protocol NotificationManagerProtocol: AnyObject {
     func checkPermissionStatus() async -> UNAuthorizationStatus
     func requestPermission() async -> Bool
     func scheduleDailyWordNotification(with modelContext: ModelContext) async
+    func scheduledNotificationWordID(for date: Date) -> String?
     func cancelAllNotifications()
 }
 

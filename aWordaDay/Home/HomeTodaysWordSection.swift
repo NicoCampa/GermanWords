@@ -92,7 +92,7 @@ extension ContentView {
             if !word.localizedExamplePairs.isEmpty {
                 let highlightColor = genderColor(for: word) ?? DesignTokens.color.skyBlue
                 let highlightWord = word.word
-                let visiblePairs = Array(word.localizedExamplePairs.prefix(2))
+                let visiblePairs = Array(word.localizedExamplePairs.prefix(3))
 
                 compactExamplesCard(
                     word: word,
@@ -125,7 +125,12 @@ extension ContentView {
                 ) {
                     VStack(alignment: .leading, spacing: 18) {
                         ForEach(Array(usageNotesEntries.enumerated()), id: \.offset) { index, entry in
-                            TimelineRow(text: entry, accent: DesignTokens.color.accentBlue, isLast: index == usageNotesEntries.count - 1)
+                            TimelineRow(
+                                text: entry,
+                                accent: DesignTokens.color.accentBlue,
+                                isLast: index == usageNotesEntries.count - 1,
+                                showsMarker: false
+                            )
                         }
                     }
                 }

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct ContentView: View {
     @Environment(\.modelContext) var modelContext
@@ -38,9 +39,9 @@ struct ContentView: View {
     @State private var currentWordID: String?
     @State private var canLoadMoreWords = false
     @State private var isLoadingNextWord = false
+    @State private var isRebasingWordFeedSelection = false
     @State private var selectedPageByWordID: [String: WordCardPageKind] = [:]
-    @State private var statsStripHeight: CGFloat = 0
-    @State private var hasTriggeredBottomOverscrollLoad = false
+    @State private var completedWordIDs: Set<String> = []
 
     var todaysWord: LearnWordPayload? { viewModel.todaysWord }
     var activeWord: LearnWordPayload? {
@@ -62,72 +63,56 @@ struct ContentView: View {
     }
 
     var scrollableHome: some View {
-        GeometryReader { geometry in
-            let bottomReserved = max(geometry.safeAreaInsets.bottom, 20) + 96
-            let availableHeight = max(geometry.size.height - statsStripHeight - 26 - bottomReserved, 280)
+        VStack(spacing: 14) {
+            compactStatsStrip
 
-            VStack(spacing: 14) {
-                compactStatsStrip
-                    .background(
-                        GeometryReader { proxy in
-                            Color.clear
-                                .preference(key: HomeStatsStripHeightPreferenceKey.self, value: proxy.size.height)
-                        }
-                    )
-
-                if wordFeed.isEmpty {
-                    Spacer(minLength: 0)
-                    noWordsSection
-                    Spacer(minLength: 0)
-                } else {
-                    verticalWordFeed(cardHeight: availableHeight)
-                        .frame(height: availableHeight)
+            if wordFeed.isEmpty {
+                Spacer(minLength: 0)
+                noWordsSection
+                Spacer(minLength: 0)
+            } else {
+                GeometryReader { proxy in
+                    verticalWordFeed(size: proxy.size)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .onPreferenceChange(HomeStatsStripHeightPreferenceKey.self) { statsStripHeight = $0 }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    private func verticalWordFeed(cardHeight: CGFloat) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: 0) {
-                ForEach(wordFeed) { word in
-                    HomeWordCardView(
-                        word: word,
-                        selectedPage: pageSelectionBinding(for: word),
-                        speechSynthesizer: speechSynthesizer,
-                        isPronunciationActive: showingPronunciation && activeWord?.id == word.id,
-                        onPronounce: {
-                            focusWord(id: word.id, animated: false)
-                            pronounceWord()
-                        }
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 20)
-                    .frame(height: cardHeight)
-                    .clipped()
-                    .id(word.id)
-                }
-            }
-            .scrollTargetLayout()
+    private func verticalWordFeed(size: CGSize) -> some View {
+        VerticalWordPager(pageCount: wordFeed.count, selection: $currentWordIndex) { index in
+            wordFeedPage(for: wordFeed[index], size: size)
         }
-        .scrollIndicators(.hidden)
-        .scrollTargetBehavior(.paging)
-        .scrollPosition(id: $currentWordID)
         .onAppear(perform: syncCurrentWordIDWithFeed)
-        .onChange(of: currentWordID) { _, newWordID in
-            syncCurrentWordIndex(for: newWordID)
+        .onAppear(perform: ensureLookaheadWordIfNeeded)
+        .onChange(of: currentWordIndex) { oldIndex, newIndex in
+            handleWordPageChange(from: oldIndex, to: newIndex)
         }
-        .onScrollGeometryChange(for: PagerOverscrollState.self) { geometry in
-            let bottomOverscroll = max(
-                0,
-                geometry.contentOffset.y + geometry.visibleRect.height - geometry.contentSize.height
+        .frame(width: size.width, height: size.height)
+        .clipped()
+    }
+
+    private func wordFeedPage(for word: LearnWordPayload, size: CGSize) -> some View {
+        ZStack(alignment: .top) {
+            HomeWordCardView(
+                word: word,
+                selectedPage: pageSelectionBinding(for: word),
+                speechSynthesizer: speechSynthesizer,
+                isPronunciationActive: showingPronunciation && activeWord?.id == word.id,
+                onPronounce: {
+                    focusWord(id: word.id, animated: false)
+                    pronounceWord()
+                }
             )
-            return PagerOverscrollState(bottomOverscroll: bottomOverscroll)
-        } action: { _, state in
-            handlePagerOverscroll(state.bottomOverscroll)
+            .padding(.horizontal, 20)
+            .padding(.top, 2)
+            .padding(.bottom, 8)
         }
+        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(width: size.width, height: size.height, alignment: .top)
+        .clipped()
+        .id(word.id)
     }
 
     var achievementOverlay: some View {
@@ -186,12 +171,6 @@ struct ContentView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Text(L10n.Tabs.learn)
-                        .font(DesignTokens.typography.callout(weight: .bold))
-                        .foregroundStyle(DesignTokens.color.headingPrimary)
-                }
-
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     topBarActionButton(
                         icon: "magnifyingglass",
@@ -280,6 +259,7 @@ struct ContentView: View {
             currentWordIndex = 0
             currentWordID = nil
             canLoadMoreWords = false
+            completedWordIDs.removeAll()
             selectedPageByWordID.removeAll()
             return
         }
@@ -299,6 +279,7 @@ struct ContentView: View {
                 currentWordID = latestWord.id
             }
 
+            completedWordIDs.formIntersection(Set(wordFeed.map(\.id)))
             return
         }
 
@@ -307,6 +288,7 @@ struct ContentView: View {
             ensurePageState(for: latestWord)
             currentWordIndex = 0
             currentWordID = latestWord.id
+            completedWordIDs.removeAll()
             return
         }
 
@@ -314,42 +296,7 @@ struct ContentView: View {
         ensurePageState(for: latestWord)
         currentWordIndex = wordFeed.count - 1
         currentWordID = latestWord.id
-        hasTriggeredBottomOverscrollLoad = false
-    }
-
-    private func requestAndShowNextWord() {
-        guard canLoadMoreWords && hasAvailableWords else {
-            return
-        }
-        guard !isLoadingNextWord else { return }
-
-        isLoadingNextWord = true
-        let currentWordID = activeWord?.id
-        handleNewWordRequest()
-        isLoadingNextWord = false
-
-        guard let latestWord = viewModel.todaysWord else {
-            canLoadMoreWords = false
-            return
-        }
-
-        canLoadMoreWords = viewModel.availableWordCount > 1
-
-        if let existingIndex = wordFeed.firstIndex(where: { $0.id == latestWord.id }) {
-            focusWord(at: existingIndex, animated: true)
-            return
-        }
-
-        guard latestWord.id != currentWordID else {
-            return
-        }
-
-        if wordFeed.last?.id != latestWord.id {
-            wordFeed.append(latestWord)
-            ensurePageState(for: latestWord)
-        }
-
-        focusWord(at: wordFeed.count - 1, animated: true)
+        completedWordIDs.formIntersection(Set(wordFeed.map(\.id)))
     }
 
     private func openPendingNotificationWordIfNeeded() {
@@ -366,26 +313,7 @@ struct ContentView: View {
             resetPageState(for: targetWord)
         }
         focusWord(id: wordID, animated: false)
-    }
-
-    private func handlePagerOverscroll(_ bottomOverscroll: CGFloat) {
-        guard currentWordIndex == wordFeed.count - 1 else {
-            hasTriggeredBottomOverscrollLoad = false
-            return
-        }
-
-        guard canLoadMoreWords && hasAvailableWords else { return }
-
-        if bottomOverscroll < 12 {
-            hasTriggeredBottomOverscrollLoad = false
-            return
-        }
-
-        guard bottomOverscroll > 72 else { return }
-        guard !hasTriggeredBottomOverscrollLoad else { return }
-
-        hasTriggeredBottomOverscrollLoad = true
-        requestAndShowNextWord()
+        ensureLookaheadWordIfNeeded()
     }
 
     private func syncCurrentWordIDWithFeed() {
@@ -401,28 +329,21 @@ struct ContentView: View {
         currentWordID = wordFeed[safe: currentWordIndex]?.id ?? wordFeed.first?.id
     }
 
-    private func syncCurrentWordIndex(for wordID: String?) {
-        guard let wordID,
-              let index = wordFeed.firstIndex(where: { $0.id == wordID }) else { return }
-
-        currentWordIndex = index
-        ensurePageState(for: wordFeed[index])
-        hasTriggeredBottomOverscrollLoad = false
-    }
-
     private func focusWord(at index: Int, animated: Bool) {
         guard wordFeed.indices.contains(index) else { return }
         let wordID = wordFeed[index].id
 
-        currentWordIndex = index
-        hasTriggeredBottomOverscrollLoad = false
+        let updateSelection = {
+            currentWordIndex = index
+        }
+        currentWordID = wordID
 
         if animated {
             withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
-                currentWordID = wordID
+                updateSelection()
             }
         } else {
-            currentWordID = wordID
+            updateSelection()
         }
     }
 
@@ -454,44 +375,221 @@ struct ContentView: View {
         selectedPageByWordID[word.id] = defaultWordCardPageKind(for: word)
     }
 
+    private func handleWordPageChange(from oldIndex: Int, to newIndex: Int) {
+        guard wordFeed.indices.contains(newIndex) else { return }
+
+        let newWord = wordFeed[newIndex]
+
+        if isRebasingWordFeedSelection {
+            isRebasingWordFeedSelection = false
+            currentWordID = newWord.id
+            ensurePageState(for: newWord)
+            ensureLookaheadWordIfNeeded()
+            return
+        }
+
+        currentWordID = newWord.id
+        ensurePageState(for: newWord)
+
+        if newIndex > oldIndex, wordFeed.indices.contains(oldIndex) {
+            let previousWord = wordFeed[oldIndex]
+            if completedWordIDs.insert(previousWord.id).inserted {
+                viewModel.advanceToWord(
+                    id: newWord.id,
+                    from: previousWord.id,
+                    onXPGained: { xp in triggerXPGainAnimation(amount: xp) },
+                    onAchievement: { msg in showAchievementToast(msg) }
+                )
+            }
+
+            rebaseWordFeed(keepingVisibleIndex: newIndex)
+        }
+
+        ensureLookaheadWordIfNeeded()
+    }
+
+    private func ensureLookaheadWordIfNeeded() {
+        guard currentWordIndex >= wordFeed.count - 2 else { return }
+        preloadNextWordIfNeeded()
+    }
+
+    private func preloadNextWordIfNeeded() {
+        guard canLoadMoreWords && hasAvailableWords else { return }
+        guard !isLoadingNextWord else { return }
+
+        let excludedIDs = Set(wordFeed.map(\.id))
+        let anchorWordID = wordFeed.last?.id
+
+        isLoadingNextWord = true
+        defer { isLoadingNextWord = false }
+
+        guard let nextWord = viewModel.previewNextWord(after: anchorWordID, excluding: excludedIDs) else {
+            canLoadMoreWords = false
+            return
+        }
+
+        wordFeed.append(nextWord)
+        ensurePageState(for: nextWord)
+        canLoadMoreWords = viewModel.availableWordCount > 1
+    }
+
+    private func rebaseWordFeed(keepingVisibleIndex visibleIndex: Int) {
+        guard visibleIndex > 0, wordFeed.indices.contains(visibleIndex) else { return }
+
+        let visibleWordID = wordFeed[visibleIndex].id
+        wordFeed.removeFirst(visibleIndex)
+        completedWordIDs.formIntersection(Set(wordFeed.map(\.id)))
+
+        if currentWordID == visibleWordID {
+            isRebasingWordFeedSelection = true
+            currentWordIndex = 0
+        } else {
+            currentWordID = wordFeed.first?.id
+            currentWordIndex = 0
+        }
+    }
+
     @ViewBuilder
     private func topBarActionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(DesignTokens.color.headingPrimary)
-                .frame(width: 40, height: 40)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.76))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Color.white.opacity(0.88), lineWidth: 1)
-                        )
-                )
-                .shadow(color: Color(red: 0.19, green: 0.37, blue: 0.72).opacity(0.1), radius: 12, x: 0, y: 6)
+                .font(.system(size: 19, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(DesignTokens.color.primary)
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
         .accessibilityLabel(label)
     }
 
 }
 
-private struct PagerOverscrollState: Equatable {
-    let bottomOverscroll: CGFloat
-}
-
-private struct HomeStatsStripHeightPreferenceKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
 private extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
+    }
+}
+
+private struct VerticalWordPager<Page: View>: UIViewControllerRepresentable {
+    let pageCount: Int
+    @Binding var selection: Int
+    let content: (Int) -> Page
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeUIViewController(context: Context) -> UIPageViewController {
+        let controller = UIPageViewController(
+            transitionStyle: .scroll,
+            navigationOrientation: .vertical
+        )
+        controller.dataSource = context.coordinator
+        controller.delegate = context.coordinator
+        context.coordinator.syncControllers(with: self)
+
+        if let initialController = context.coordinator.controller(at: clampedSelection) {
+            controller.setViewControllers([initialController], direction: .forward, animated: false)
+            context.coordinator.currentIndex = clampedSelection
+        }
+
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIPageViewController, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.syncControllers(with: self)
+
+        let targetIndex = clampedSelection
+        guard let targetController = context.coordinator.controller(at: targetIndex) else { return }
+
+        let currentController = uiViewController.viewControllers?.first
+        let currentIndex = context.coordinator.index(of: currentController) ?? context.coordinator.currentIndex
+
+        guard currentIndex != targetIndex || currentController !== targetController else { return }
+
+        let direction: UIPageViewController.NavigationDirection = targetIndex >= currentIndex ? .forward : .reverse
+        uiViewController.setViewControllers([targetController], direction: direction, animated: false)
+        context.coordinator.currentIndex = targetIndex
+    }
+
+    private var clampedSelection: Int {
+        guard pageCount > 0 else { return 0 }
+        return min(max(selection, 0), pageCount - 1)
+    }
+
+    final class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
+        var parent: VerticalWordPager
+        var controllers: [UIHostingController<AnyView>] = []
+        var currentIndex = 0
+
+        init(parent: VerticalWordPager) {
+            self.parent = parent
+        }
+
+        func syncControllers(with parent: VerticalWordPager) {
+            if controllers.count > parent.pageCount {
+                controllers.removeLast(controllers.count - parent.pageCount)
+            } else if controllers.count < parent.pageCount {
+                let startIndex = controllers.count
+                let newControllers = (startIndex..<parent.pageCount).map { index in
+                    UIHostingController(rootView: AnyView(parent.content(index)))
+                }
+                controllers.append(contentsOf: newControllers)
+            }
+
+            for index in controllers.indices {
+                controllers[index].rootView = AnyView(parent.content(index))
+                controllers[index].view.backgroundColor = .clear
+            }
+        }
+
+        func controller(at index: Int) -> UIViewController? {
+            guard controllers.indices.contains(index) else { return nil }
+            return controllers[index]
+        }
+
+        func index(of viewController: UIViewController?) -> Int? {
+            guard let viewController else { return nil }
+            return controllers.firstIndex { $0 === viewController }
+        }
+
+        func pageViewController(
+            _ pageViewController: UIPageViewController,
+            viewControllerBefore viewController: UIViewController
+        ) -> UIViewController? {
+            guard let index = index(of: viewController), index > 0 else { return nil }
+            return controllers[index - 1]
+        }
+
+        func pageViewController(
+            _ pageViewController: UIPageViewController,
+            viewControllerAfter viewController: UIViewController
+        ) -> UIViewController? {
+            guard let index = index(of: viewController), index < controllers.count - 1 else { return nil }
+            return controllers[index + 1]
+        }
+
+        func pageViewController(
+            _ pageViewController: UIPageViewController,
+            didFinishAnimating finished: Bool,
+            previousViewControllers: [UIViewController],
+            transitionCompleted completed: Bool
+        ) {
+            guard completed,
+                  let visibleController = pageViewController.viewControllers?.first,
+                  let index = index(of: visibleController) else {
+                return
+            }
+
+            currentIndex = index
+
+            guard parent.selection != index else { return }
+            DispatchQueue.main.async {
+                self.parent.selection = index
+            }
+        }
     }
 }
 

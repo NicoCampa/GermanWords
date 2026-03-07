@@ -10,6 +10,7 @@ import UserNotifications
 import SwiftData
 
 private let notificationWordIDKey = "notification_word_id"
+private let scheduledWordIDsKey = "daily_notification_word_ids"
 
 @MainActor
 @Observable
@@ -17,12 +18,15 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
     static let shared = NotificationManager()
     
     private let center = UNUserNotificationCenter.current()
+    private let catalogStore: CatalogStoreProtocol = SQLiteCatalogStore.shared
     private let selector = NotificationWordSelector()
     
     // Notification identifiers
-    private let dailyWordIdentifier = "daily_word_notification"
+    private let legacyDailyWordIdentifier = "daily_word_notification"
+    private let dailyWordIdentifierPrefix = "daily_word_notification_"
     // Settings keys
     private let dailyNotificationTimeKey = "daily_notification_time"
+    private let scheduleHorizonDays = 30
 
     var isNotificationsEnabled = false
     var dailyNotificationTime = DateComponents(hour: 9, minute: 0)
@@ -113,46 +117,169 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
             return
         }
 
-        await removeLegacyNotificationsIfNeeded()
+        let now = Date()
+        let scheduledDates = upcomingNotificationDates(count: scheduleHorizonDays, from: now)
+        let validDateKeys = Set(scheduledDates.map(dateKey(for:)))
 
-        // Cancel existing daily notification only (not test notifications)
-        center.removePendingNotificationRequests(withIdentifiers: [dailyWordIdentifier])
+        var scheduledWordIDs = loadScheduledWordSchedule()
+            .filter { validDateKeys.contains($0.key) }
+        var reservedWordIDs = Set(scheduledWordIDs.values)
+
+        for date in scheduledDates {
+            let key = dateKey(for: date)
+
+            if let existingWordID = scheduledWordIDs[key],
+               catalogStore.fetchWord(id: existingWordID) != nil {
+                continue
+            }
+
+            let selectedWord = selector.selectWord(
+                modelContext: modelContext,
+                language: AppLanguage.sourceCode,
+                excluding: reservedWordIDs
+            ) ?? selector.selectWord(
+                modelContext: modelContext,
+                language: AppLanguage.sourceCode
+            )
+
+            guard let selectedWord else {
+                scheduledWordIDs.removeValue(forKey: key)
+                continue
+            }
+
+            scheduledWordIDs[key] = selectedWord.id
+            reservedWordIDs.insert(selectedWord.id)
+        }
+
+        saveScheduledWordSchedule(scheduledWordIDs)
+        await removePendingDailyWordNotifications()
+
+        var scheduledRequestCount = 0
+        for date in scheduledDates {
+            let key = dateKey(for: date)
+            let triggerDate = notificationTriggerDate(for: date)
+
+            guard triggerDate > now else { continue }
+
+            let content: UNMutableNotificationContent
+            if let wordID = scheduledWordIDs[key],
+               let word = catalogStore.fetchWord(id: wordID) {
+                content = createDailyWordContent(for: word)
+            } else {
+                content = createFallbackDailyWordContent()
+            }
+
+            let triggerComponents = calendar.dateComponents(
+                [.year, .month, .day, .hour, .minute],
+                from: triggerDate
+            )
+            let request = UNNotificationRequest(
+                identifier: notificationIdentifier(for: key),
+                content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: triggerComponents, repeats: false)
+            )
+
+            do {
+                try await center.add(request)
+                scheduledRequestCount += 1
+            } catch {
+                #if DEBUG
+                print("❌ Error scheduling daily notification for \(key): \(error)")
+                #endif
+            }
+        }
+
         #if DEBUG
-        print("🗑️ Cleared existing daily word notification")
+        print("✅ Scheduled \(scheduledRequestCount) daily word notifications")
         #endif
+    }
 
-        let content: UNMutableNotificationContent
-        if let word = selector.selectWord(modelContext: modelContext, language: AppLanguage.sourceCode) {
-            content = createDailyWordContent(for: word)
-        } else {
-            let fallback = UNMutableNotificationContent()
-            fallback.title = L10n.Notifications.dailyWordAwaits
-            fallback.body = L10n.Notifications.openAppToDiscover
-            fallback.sound = .default
-            fallback.badge = NSNumber(value: 1)
-            fallback.categoryIdentifier = "DAILY_WORD"
-            content = fallback
+    func scheduledNotificationWordID(for date: Date) -> String? {
+        let key = dateKey(for: date)
+        guard let wordID = loadScheduledWordSchedule()[key] else { return nil }
+        guard catalogStore.fetchWord(id: wordID) != nil else { return nil }
+        return wordID
+    }
+
+    private var calendar: Calendar {
+        var current = Calendar.autoupdatingCurrent
+        current.timeZone = .autoupdatingCurrent
+        return current
+    }
+
+    private func createFallbackDailyWordContent() -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = L10n.Notifications.dailyWordAwaits
+        content.body = L10n.Notifications.openAppToDiscover
+        content.sound = .default
+        content.badge = NSNumber(value: 1)
+        content.categoryIdentifier = "DAILY_WORD"
+        return content
+    }
+
+    private func upcomingNotificationDates(count: Int, from date: Date) -> [Date] {
+        guard count > 0 else { return [] }
+
+        let startOfToday = calendar.startOfDay(for: date)
+        return (0..<count).compactMap { offset in
+            calendar.date(byAdding: .day, value: offset, to: startOfToday)
         }
+    }
 
-        // Create calendar trigger
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dailyNotificationTime, repeats: true)
+    private func notificationTriggerDate(for day: Date) -> Date {
+        let hour = dailyNotificationTime.hour ?? 9
+        let minute = dailyNotificationTime.minute ?? 0
+        return calendar.date(
+            bySettingHour: hour,
+            minute: minute,
+            second: 0,
+            of: day
+        ) ?? day
+    }
 
-        let request = UNNotificationRequest(
-            identifier: dailyWordIdentifier,
-            content: content,
-            trigger: trigger
-        )
+    private func notificationIdentifier(for dateKey: String) -> String {
+        dailyWordIdentifierPrefix + dateKey
+    }
 
-        do {
-            try await center.add(request)
-            #if DEBUG
-            print("✅ Daily notification reminder scheduled")
-            #endif
-        } catch {
-            #if DEBUG
-            print("❌ Error scheduling daily notification: \(error)")
-            #endif
+    private func dateKey(for date: Date) -> String {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        let year = components.year ?? 0
+        let month = components.month ?? 0
+        let day = components.day ?? 0
+        return String(format: "%04d-%02d-%02d", year, month, day)
+    }
+
+    private func loadScheduledWordSchedule() -> [String: String] {
+        guard let stored = UserDefaults.standard.dictionary(forKey: scheduledWordIDsKey) as? [String: String] else {
+            return [:]
         }
+        return stored
+    }
+
+    private func saveScheduledWordSchedule(_ schedule: [String: String]) {
+        UserDefaults.standard.set(schedule, forKey: scheduledWordIDsKey)
+    }
+
+    private func clearScheduledWordSchedule() {
+        UserDefaults.standard.removeObject(forKey: scheduledWordIDsKey)
+    }
+
+    private func removePendingDailyWordNotifications() async {
+        let requests = await center.pendingNotificationRequests()
+        let identifiers = requests
+            .map(\.identifier)
+            .filter { isDailyWordNotificationIdentifier($0) }
+
+        guard !identifiers.isEmpty else { return }
+
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        #if DEBUG
+        print("🗑️ Cleared daily word notifications: \(identifiers)")
+        #endif
+    }
+
+    private func isDailyWordNotificationIdentifier(_ identifier: String) -> Bool {
+        identifier == legacyDailyWordIdentifier || identifier.hasPrefix(dailyWordIdentifierPrefix)
     }
 
     // MARK: - Smart Content Generation
@@ -200,57 +327,28 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
     private func generateFunNotification(for word: CatalogWordDetail) -> String {
         let w = word.word
         let t = word.localizedTranslation
-        let zh = AppLanguage.activeTargetLanguage == .chinese
-
         let templates: [(emoji: String, templates: [String])] = [
-            // Food & Drink
-            ("🍞🥐🍰🍕🍝", zh ? [
-                "🍞 来学习 '\(w)' - \(t)！",
-                "🥐 学个新词？试试 '\(w)'！",
-                "🍰 发现 '\(w)'"
-            ] : [
+            ("🍞🥐🍰🍕🍝", [
                 "🍞 Hungry? Learn '\(w)' - \(t)!",
                 "🥐 Craving vocab? Try '\(w)'!",
                 "🍰 Sweet! Discover '\(w)' today"
             ]),
-            // Travel & Places
-            ("✈️🌍🏖️🗺️🚂", zh ? [
-                "✈️ 准备旅行？学 '\(w)'！",
-                "🌍 探索 '\(w)' - \(t)",
-                "🗺️ 新词：'\(w)'"
-            ] : [
+            ("✈️🌍🏖️🗺️🚂", [
                 "✈️ Ready to travel? Say '\(w)'!",
                 "🌍 Explore '\(w)' - \(t)",
                 "🗺️ New destination: '\(w)'"
             ]),
-            // Emotions & Feelings
-            ("😊❤️😢😡🎉", zh ? [
-                "😊 '\(w)' 的意思是 \(t)",
-                "❤️ 喜欢这个：'\(w)'！",
-                "🎉 学习 '\(w)'"
-            ] : [
+            ("😊❤️😢😡🎉", [
                 "😊 Feel it! '\(w)' means \(t)",
                 "❤️ Loving this: '\(w)'!",
                 "🎉 Celebrate with '\(w)'"
             ]),
-            // Time & Weather
-            ("⏰☀️🌧️❄️🌙", zh ? [
-                "☀️ 今天学 '\(w)'！",
-                "⏰ 是时候学 '\(w)' 了！",
-                "🌙 今晚的单词：'\(w)'"
-            ] : [
+            ("⏰☀️🌧️❄️🌙", [
                 "☀️ Shine with '\(w)' today!",
                 "⏰ Time to learn '\(w)'!",
                 "🌙 Nightly word: '\(w)'"
             ]),
-            // General Learning
-            ("🎯💡✨🚀📚", zh ? [
-                "🎯 掌握 '\(w)' - \(t)！",
-                "💡 好词：'\(w)'",
-                "✨ 学习 '\(w)'！",
-                "🚀 开始学 '\(w)'",
-                "📚 今日单词：'\(w)'"
-            ] : [
+            ("🎯💡✨🚀📚", [
                 "🎯 Master '\(w)' - \(t)!",
                 "💡 Bright idea: '\(w)'",
                 "✨ Sparkle with '\(w)'!",
@@ -261,7 +359,7 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
 
         // Pick a random template set
         let templateSet = templates.randomElement() ?? templates[4]
-        let fallbackMsg = zh ? "学习 '\(w)' - \(t)" : "Learn '\(w)' - \(t)"
+        let fallbackMsg = "Learn '\(w)' - \(t)"
         let message = templateSet.templates.randomElement() ?? fallbackMsg
 
         // Ensure it's under 45 characters
@@ -270,13 +368,7 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
         }
 
         // Fallback to shorter version
-        let shortFallbacks: [String] = zh ? [
-            "✨ '\(w)' = \(t)！",
-            "🎯 今天学 '\(w)'！",
-            "💡 '\(w)' 是 \(t)",
-            "🚀 说 '\(w)'！",
-            "📚 新词：'\(w)'"
-        ] : [
+        let shortFallbacks: [String] = [
             "✨ '\(w)' = \(t)!",
             "🎯 Learn '\(w)' today!",
             "💡 '\(w)' means \(t)",
@@ -284,29 +376,13 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
             "📚 New word: '\(w)'"
         ]
 
-        let shortFallback = zh ? "学习 '\(w)'" : "Learn '\(w)'"
+        let shortFallback = "Learn '\(w)'"
         return shortFallbacks.randomElement() ?? shortFallback
-    }
-
-    private func removeLegacyNotificationsIfNeeded() async {
-        let requests = await center.pendingNotificationRequests()
-        let legacyIdentifiers = requests
-            .map(\.identifier)
-            .filter { identifier in
-                identifier != dailyWordIdentifier && !identifier.hasPrefix("test_notification_")
-            }
-
-        if !legacyIdentifiers.isEmpty {
-            center.removePendingNotificationRequests(withIdentifiers: legacyIdentifiers)
-            #if DEBUG
-            print("🧹 Removed legacy notifications: \(legacyIdentifiers)")
-            #endif
-        }
     }
 
     func hasCurrentDailyWordNotification() async -> Bool {
         let requests = await center.pendingNotificationRequests()
-        return requests.contains { $0.identifier == dailyWordIdentifier }
+        return requests.contains { isDailyWordNotificationIdentifier($0.identifier) }
     }
 
     func consumePendingNotificationWordID() -> String? {
@@ -324,6 +400,7 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
 
     func cancelAllNotifications() {
         center.removeAllPendingNotificationRequests()
+        clearScheduledWordSchedule()
         #if DEBUG
         print("✅ All notifications cancelled")
         #endif

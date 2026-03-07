@@ -19,10 +19,15 @@ final class NotificationWordSelector {
         self.userStateStore = userStateStore ?? SwiftDataUserStateStore()
     }
 
-    func selectWord(modelContext: ModelContext, language: String) -> CatalogWordDetail? {
+    func selectWord(
+        modelContext: ModelContext,
+        language: String,
+        excluding excludedWordIDs: Set<String> = []
+    ) -> CatalogWordDetail? {
         let states = userStateStore.loadWordStates(in: modelContext)
 
         if let dueState = states
+            .filter({ !excludedWordIDs.contains($0.wordID) })
             .filter({ $0.isDueForReview })
             .sorted(by: { ($0.srsDueDate ?? .distantFuture) < ($1.srsDueDate ?? .distantFuture) })
             .first {
@@ -35,16 +40,19 @@ final class NotificationWordSelector {
             difficultyPolicy: CatalogDifficultyPolicy(preferredDifficulty: nil, allowMixedDifficulty: true),
             limit: 0
         )
-        .filter { !stateIDs.contains($0.id) }
+        .filter { !stateIDs.contains($0.id) && !excludedWordIDs.contains($0.id) }
 
         if let unseen = unseenCandidates.randomElement() {
             return catalogStore.fetchWord(id: unseen.id)
         }
 
-        if let leastReviewed = states.min(by: { $0.reviewCount < $1.reviewCount }) {
+        if let leastReviewed = states
+            .filter({ !excludedWordIDs.contains($0.wordID) })
+            .min(by: { $0.reviewCount < $1.reviewCount }) {
             return catalogStore.fetchWord(id: leastReviewed.wordID)
         }
 
-        return catalogStore.fetchNotificationCandidateWords(limit: 1).first
+        return catalogStore.fetchNotificationCandidateWords(limit: 25)
+            .first(where: { !excludedWordIDs.contains($0.id) })
     }
 }

@@ -93,24 +93,24 @@ struct DesignTokens {
             dark: UIColor(red: 0.85, green: 0.88, blue: 0.95, alpha: 1)
         )
         let textSecondary = adaptive(
-            light: UIColor(red: 0.2, green: 0.3, blue: 0.5, alpha: 1),
+            light: UIColor(red: 0.17, green: 0.27, blue: 0.47, alpha: 1),
             dark: UIColor(red: 0.75, green: 0.8, blue: 0.88, alpha: 1)
         )
         let textTertiary = adaptive(
-            light: UIColor(red: 0.3, green: 0.4, blue: 0.6, alpha: 1),
-            dark: UIColor(red: 0.65, green: 0.7, blue: 0.8, alpha: 1)
+            light: UIColor(red: 0.24, green: 0.35, blue: 0.56, alpha: 1),
+            dark: UIColor(red: 0.72, green: 0.76, blue: 0.86, alpha: 1)
         )
         let textMuted = adaptive(
-            light: UIColor(red: 0.5, green: 0.6, blue: 0.7, alpha: 1),
-            dark: UIColor(red: 0.55, green: 0.6, blue: 0.7, alpha: 1)
+            light: UIColor(red: 0.4, green: 0.5, blue: 0.63, alpha: 1),
+            dark: UIColor(red: 0.64, green: 0.69, blue: 0.79, alpha: 1)
         )
         let textLight = adaptive(
-            light: UIColor(red: 0.45, green: 0.55, blue: 0.75, alpha: 1),
-            dark: UIColor(red: 0.6, green: 0.65, blue: 0.75, alpha: 1)
+            light: UIColor(red: 0.34, green: 0.46, blue: 0.68, alpha: 1),
+            dark: UIColor(red: 0.72, green: 0.77, blue: 0.87, alpha: 1)
         )
         let textSubtle = adaptive(
-            light: UIColor(red: 0.4, green: 0.5, blue: 0.7, alpha: 1),
-            dark: UIColor(red: 0.55, green: 0.6, blue: 0.75, alpha: 1)
+            light: UIColor(red: 0.3, green: 0.42, blue: 0.63, alpha: 1),
+            dark: UIColor(red: 0.68, green: 0.74, blue: 0.84, alpha: 1)
         )
         let headingPrimary = adaptive(
             light: UIColor(red: 0.15, green: 0.25, blue: 0.6, alpha: 1),
@@ -132,32 +132,76 @@ struct DesignTokens {
 
         // Background colors
         let backgroundLight = adaptive(
-            light: UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 1),
-            dark: UIColor(red: 0.11, green: 0.11, blue: 0.13, alpha: 1)
+            light: UIColor(red: 0.91, green: 0.95, blue: 1.0, alpha: 1),
+            dark: UIColor(red: 0.07, green: 0.09, blue: 0.14, alpha: 1)
         )
         let backgroundMedium = adaptive(
-            light: UIColor(red: 0.92, green: 0.95, blue: 0.99, alpha: 1),
-            dark: UIColor(red: 0.13, green: 0.13, blue: 0.16, alpha: 1)
-        )
-        let backgroundGradientTop = adaptive(
-            light: UIColor(red: 0.85, green: 0.93, blue: 1.0, alpha: 1),
+            light: UIColor(red: 0.86, green: 0.91, blue: 0.98, alpha: 1),
             dark: UIColor(red: 0.1, green: 0.12, blue: 0.18, alpha: 1)
         )
+        let backgroundGradientTop = adaptive(
+            light: UIColor(red: 0.77, green: 0.87, blue: 0.99, alpha: 1),
+            dark: UIColor(red: 0.06, green: 0.09, blue: 0.17, alpha: 1)
+        )
         let backgroundGradientBottom = adaptive(
-            light: UIColor(red: 0.75, green: 0.88, blue: 0.98, alpha: 1),
-            dark: UIColor(red: 0.08, green: 0.1, blue: 0.15, alpha: 1)
+            light: UIColor(red: 0.64, green: 0.8, blue: 0.96, alpha: 1),
+            dark: UIColor(red: 0.05, green: 0.07, blue: 0.13, alpha: 1)
         )
         let cardBackground = adaptive(
-            light: UIColor(white: 1.0, alpha: 0.9),
-            dark: UIColor(red: 0.17, green: 0.17, blue: 0.2, alpha: 0.9)
+            light: UIColor(white: 1.0, alpha: 0.96),
+            dark: UIColor(red: 0.13, green: 0.15, blue: 0.21, alpha: 0.94)
         )
         let sectionBackground = adaptive(
-            light: UIColor(white: 1.0, alpha: 0.8),
-            dark: UIColor(red: 0.17, green: 0.17, blue: 0.2, alpha: 0.8)
+            light: UIColor(red: 0.98, green: 0.99, blue: 1.0, alpha: 0.96),
+            dark: UIColor(red: 0.16, green: 0.19, blue: 0.26, alpha: 0.94)
         )
         let chipBackground = adaptive(
-            light: UIColor(white: 1.0, alpha: 0.9),
-            dark: UIColor(red: 0.2, green: 0.2, blue: 0.24, alpha: 0.9)
+            light: UIColor(white: 1.0, alpha: 0.97),
+            dark: UIColor(red: 0.19, green: 0.22, blue: 0.3, alpha: 0.94)
+        )
+        let surfaceElevated = adaptive(
+            light: UIColor(white: 1.0, alpha: 0.97),
+            dark: UIColor(red: 0.12, green: 0.15, blue: 0.22, alpha: 0.92)
+        )
+        let surfaceInset = adaptive(
+            light: UIColor(red: 0.92, green: 0.96, blue: 0.995, alpha: 1),
+            dark: UIColor(red: 0.18, green: 0.21, blue: 0.29, alpha: 1)
+        )
+        let surfaceStroke = adaptive(
+            light: UIColor(red: 0.69, green: 0.79, blue: 0.93, alpha: 1),
+            dark: UIColor(red: 0.35, green: 0.42, blue: 0.57, alpha: 0.72)
+        )
+        let surfaceStrokeStrong = adaptive(
+            light: UIColor(red: 0.78, green: 0.85, blue: 0.97, alpha: 1),
+            dark: UIColor(red: 0.46, green: 0.54, blue: 0.71, alpha: 0.68)
+        )
+        let progressTrack = adaptive(
+            light: UIColor(red: 0.78, green: 0.85, blue: 0.95, alpha: 1),
+            dark: UIColor(red: 0.19, green: 0.22, blue: 0.3, alpha: 1)
+        )
+        let panelShadow = adaptive(
+            light: UIColor(red: 0.12, green: 0.22, blue: 0.45, alpha: 0.16),
+            dark: UIColor(red: 0.01, green: 0.03, blue: 0.08, alpha: 0.48)
+        )
+        let homeBackgroundMiddle = adaptive(
+            light: UIColor(red: 0.82, green: 0.9, blue: 1.0, alpha: 1),
+            dark: UIColor(red: 0.08, green: 0.11, blue: 0.19, alpha: 1)
+        )
+        let homeHighlight = adaptive(
+            light: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.6),
+            dark: UIColor(red: 0.34, green: 0.48, blue: 0.76, alpha: 0.28)
+        )
+        let homeGlassFill = adaptive(
+            light: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.16),
+            dark: UIColor(red: 0.34, green: 0.44, blue: 0.64, alpha: 0.12)
+        )
+        let homeGlassStroke = adaptive(
+            light: UIColor(red: 0.74, green: 0.84, blue: 0.97, alpha: 0.62),
+            dark: UIColor(red: 0.5, green: 0.6, blue: 0.82, alpha: 0.18)
+        )
+        let homeTopOverlay = adaptive(
+            light: UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.22),
+            dark: UIColor(red: 0.39, green: 0.49, blue: 0.67, alpha: 0.12)
         )
 
         // Accent colors

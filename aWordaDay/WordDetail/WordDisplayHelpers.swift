@@ -167,7 +167,12 @@ extension ContentView {
 
             VStack(alignment: .leading, spacing: 18) {
                 ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
-                    TimelineRow(text: entry, accent: accent, isLast: index == entries.count - 1)
+                    TimelineRow(
+                        text: entry,
+                        accent: accent,
+                        isLast: index == entries.count - 1,
+                        showsMarker: false
+                    )
                 }
             }
         }

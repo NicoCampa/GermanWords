@@ -80,9 +80,19 @@ struct WordCardPage: Identifiable {
 
 func wordCardPages<WordType: WordDisplayable>(for word: WordType) -> [WordCardPage] {
     var pages: [WordCardPage] = []
+    let hasConjugation = !word.conjugationPairs.isEmpty
 
     if !word.localizedExamplePairs.isEmpty {
         pages.append(WordCardPage(kind: .examples))
+    }
+
+    // Verbs: keep Forms directly after Examples.
+    if wordCardIsVerb(word), hasConjugation {
+        pages.append(WordCardPage(kind: .conjugation))
+    }
+
+    if !wordCardUsageEntries(for: word).isEmpty {
+        pages.append(WordCardPage(kind: .usageNotes))
     }
 
     if let curiosityFacts = word.localizedCuriosityFacts?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -90,15 +100,12 @@ func wordCardPages<WordType: WordDisplayable>(for word: WordType) -> [WordCardPa
         pages.append(WordCardPage(kind: .didYouKnow))
     }
 
-    if !wordCardUsageEntries(for: word).isEmpty {
-        pages.append(WordCardPage(kind: .usageNotes))
-    }
-
     if !word.relatedWords.isEmpty {
         pages.append(WordCardPage(kind: .relatedWords))
     }
 
-    if !word.conjugationPairs.isEmpty {
+    // Non-verbs keep Forms at the end, preserving previous order.
+    if !wordCardIsVerb(word), hasConjugation {
         pages.append(WordCardPage(kind: .conjugation))
     }
 

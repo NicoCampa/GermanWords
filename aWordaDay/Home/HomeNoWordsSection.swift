@@ -16,8 +16,8 @@ extension ContentView {
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.96),
-                                    Color(red: 0.91, green: 0.96, blue: 1.0)
+                                    DesignTokens.color.surfaceElevated,
+                                    DesignTokens.color.surfaceInset
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -73,12 +73,12 @@ extension ContentView {
         .padding(.vertical, 28)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.white.opacity(0.9))
+                .fill(DesignTokens.color.surfaceElevated)
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.8), lineWidth: 1)
+                        .stroke(DesignTokens.color.surfaceStroke, lineWidth: 1)
                 )
-                .shadow(color: Color(red: 0.18, green: 0.35, blue: 0.7).opacity(0.12), radius: 24, x: 0, y: 14)
+                .shadow(color: DesignTokens.color.panelShadow, radius: 24, x: 0, y: 14)
         )
         .padding(.horizontal, 20)
     }

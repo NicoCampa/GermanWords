@@ -222,18 +222,10 @@ extension WordDisplayable {
     }
 
     var localizedTranslation: String {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let translationZh, !translationZh.isEmpty {
-            return translationZh
-        }
         return translation
     }
 
     var localizedExampleTranslations: [String] {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let exampleTranslationsZh, !exampleTranslationsZh.isEmpty {
-            return exampleTranslationsZh
-        }
         return exampleTranslations
     }
 
@@ -244,26 +236,14 @@ extension WordDisplayable {
     }
 
     var localizedCuriosityFacts: String? {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let curiosityFactsZh, !curiosityFactsZh.isEmpty {
-            return curiosityFactsZh
-        }
         return curiosityFacts
     }
 
     var localizedUsageNotes: String? {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let usageNotesZh, !usageNotesZh.isEmpty {
-            return usageNotesZh
-        }
         return usageNotes
     }
 
     var localizedNotificationMessage: String? {
-        if AppLanguage.activeTargetLanguage == .chinese,
-           let notificationMessageZh, !notificationMessageZh.isEmpty {
-            return notificationMessageZh
-        }
         return notificationMessage
     }
 

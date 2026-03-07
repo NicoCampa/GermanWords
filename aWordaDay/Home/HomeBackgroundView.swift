@@ -12,9 +12,9 @@ struct HomeBackgroundView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.97, green: 0.98, blue: 1.0),
-                    Color(red: 0.88, green: 0.93, blue: 1.0),
-                    Color(red: 0.82, green: 0.89, blue: 0.99)
+                    DesignTokens.color.backgroundLight,
+                    DesignTokens.color.homeBackgroundMiddle,
+                    DesignTokens.color.backgroundGradientBottom
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -22,8 +22,8 @@ struct HomeBackgroundView: View {
 
             RadialGradient(
                 colors: [
-                    Color.white.opacity(0.95),
-                    Color.white.opacity(0)
+                    DesignTokens.color.homeHighlight,
+                    DesignTokens.color.homeHighlight.opacity(0)
                 ],
                 center: .topLeading,
                 startRadius: 40,
@@ -44,14 +44,14 @@ struct HomeBackgroundView: View {
                 .offset(x: 150, y: 120)
 
             RoundedRectangle(cornerRadius: 120, style: .continuous)
-                .fill(Color.white.opacity(0.24))
+                .fill(DesignTokens.color.homeGlassFill)
                 .frame(width: 220, height: 220)
                 .rotationEffect(.degrees(24))
                 .blur(radius: 18)
                 .offset(x: 170, y: -250)
 
             RoundedRectangle(cornerRadius: 80, style: .continuous)
-                .stroke(Color.white.opacity(0.22), lineWidth: 1)
+                .stroke(DesignTokens.color.homeGlassStroke, lineWidth: 1)
                 .frame(width: 300, height: 300)
                 .rotationEffect(.degrees(-16))
                 .offset(x: -170, y: 260)
@@ -59,8 +59,8 @@ struct HomeBackgroundView: View {
         .overlay(alignment: .top) {
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.5),
-                    Color.white.opacity(0)
+                    DesignTokens.color.homeTopOverlay,
+                    DesignTokens.color.homeTopOverlay.opacity(0)
                 ],
                 startPoint: .top,
                 endPoint: .bottom

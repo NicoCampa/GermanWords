@@ -115,6 +115,9 @@ struct ProgressStatDetailView: View {
         case .streak:
             return "\(progress.currentStreak)d"
         case .learned:
+            if totalWordsAvailable > 0 {
+                return "\(learnedWords.count) / \(totalWordsAvailable)"
+            }
             return "\(learnedWords.count)"
         case .level:
             return "Lvl \(progress.currentLevel)"
@@ -129,11 +132,10 @@ struct ProgressStatDetailView: View {
             if learnedWords.isEmpty {
                 return L10n.StatDetail.learnedSubtitleEmpty()
             }
-            let mastered = progress.totalWordsLearned
-            if mastered == 0 {
-                return L10n.StatDetail.learnedSubtitleNoMastered()
+            if totalWordsAvailable > 0 {
+                return L10n.StatDetail.discoveredOfWords(learnedWords.count, totalWordsAvailable)
             }
-            return L10n.StatDetail.learnedSubtitleMastered(mastered)
+            return L10n.StatDetail.discoveredWordsSummary(learnedWords.count)
         case .level:
             let nextLevelXP = progress.xpForNextLevel()
             let remaining = max(nextLevelXP - progress.totalXP, 0)
@@ -163,15 +165,19 @@ struct ProgressStatDetailView: View {
     }
 
     private var learnedSection: some View {
-        VStack(spacing: 18) {
-            let discoveredCount = learnedWords.count
-            let masteredCount = progress.totalWordsLearned
+        let discoveredCount = learnedWords.count
+        let discoveredValue: String
+        if totalWordsAvailable > 0 {
+            discoveredValue = "\(discoveredCount) / \(totalWordsAvailable)"
+        } else {
+            discoveredValue = "\(discoveredCount)"
+        }
+
+        return VStack(spacing: 18) {
             statHighlightCard(
                 title: L10n.StatDetail.learningMilestones,
                 rows: [
-                    (L10n.StatDetail.wordsDiscovered, "\(discoveredCount)"),
-                    (L10n.StatDetail.fullyLearned, "\(masteredCount)"),
-                    (L10n.StatDetail.xpCollected, "\(progress.totalXP) XP")
+                    (L10n.StatDetail.wordsDiscovered, discoveredValue)
                 ]
             )
 

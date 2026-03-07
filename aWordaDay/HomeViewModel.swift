@@ -76,85 +76,61 @@ final class HomeViewModel {
             return
         }
 
-        var totalXPEarned = 0
-
-        if let current = todaysWord {
-            let reviewResult = userStateStore.saveWordReview(
-                in: modelContext,
-                wordID: current.id,
-                quality: 3,
-                date: Date()
+        let totalXPEarned = todaysWord.map {
+            completeReview(
+                for: $0,
+                modelContext: modelContext,
+                onAchievement: onAchievement
             )
-            stateByID[current.id] = reviewResult.snapshot
+        } ?? 0
 
-            totalXPEarned += 5
-            if let newLevel = currentProgress.addXP(5) {
-                let totalXP = currentProgress.totalXP
-                onAchievement("🎉 Level \(newLevel) reached!")
-                Task.detached(priority: .utility) {
-                    FirebaseAnalyticsManager.shared.logLevelUp(newLevel: newLevel, totalXP: totalXP)
-                }
-            }
-
-            if let streakMilestone = currentProgress.registerLearningActivity() {
-                Task.detached(priority: .utility) {
-                    FirebaseAnalyticsManager.shared.logStreakAchieved(streak: streakMilestone)
-                }
-            }
-
-            if reviewResult.becameLearned {
-                let masteryXP = max(current.difficultyLevel, 1) * 10
-                totalXPEarned += masteryXP
-                if let newLevel = currentProgress.addXP(masteryXP) {
-                    let totalXP = currentProgress.totalXP
-                    onAchievement("🎉 Level \(newLevel) reached!")
-                    Task.detached(priority: .utility) {
-                        FirebaseAnalyticsManager.shared.logLevelUp(newLevel: newLevel, totalXP: totalXP)
-                    }
-                }
-                currentProgress.totalWordsLearned += 1
-
-                let learnedCount = currentProgress.totalWordsLearned
-                Task.detached(priority: .utility) {
-                    FirebaseAnalyticsManager.shared.logWordLearned(
-                        word: current.word,
-                        language: current.sourceLanguage,
-                        difficulty: current.difficultyLevel,
-                        totalLearned: learnedCount
-                    )
-                }
-
-                if learnedCount.isMultiple(of: 10) {
-                    onAchievement("🎉 \(learnedCount) words learned!")
-                }
-            }
-
-            Task.detached(priority: .utility) {
-                FirebaseAnalyticsManager.shared.logWordViewed(
-                    word: current.word,
-                    language: current.sourceLanguage,
-                    difficulty: current.difficultyLevel,
-                    timesViewed: reviewResult.snapshot.reviewCount
-                )
-            }
-        }
-
-        guard let nextWord = selectNextWord(excluding: todaysWord?.id) else {
+        guard let nextWord = selectNextWord(after: todaysWord?.id) else {
             todaysWord = nil
             persistChangesIfNeeded(modelContext: modelContext)
             return
         }
 
-        currentProgress.wordOfTheDayID = nextWord.id
-        currentProgress.wordOfTheDayDate = Date()
-        currentProgress.recordWordShownToday(nextWord.id)
+        presentResolvedWord(id: nextWord.id, modelContext: modelContext, markAsShown: true)
 
         if totalXPEarned > 0 {
             onXPGained(totalXPEarned)
         }
 
-        todaysWord = learnService.makePayload(wordID: nextWord.id, statesByID: stateByID)
-        persistChangesIfNeeded(modelContext: modelContext)
+        updateAnalyticsUserProperties()
+    }
+
+    func previewNextWord(after currentWordID: String?, excluding excludedIDs: Set<String>) -> LearnWordPayload? {
+        guard availableWordCount > 0 else { return nil }
+        guard let nextWord = selectNextWord(after: currentWordID, excluding: excludedIDs) else {
+            return nil
+        }
+        return learnService.makePayload(wordID: nextWord.id, statesByID: stateByID)
+    }
+
+    func advanceToWord(
+        id nextWordID: String,
+        from currentWordID: String?,
+        onXPGained: (Int) -> Void,
+        onAchievement: (String) -> Void
+    ) {
+        guard let modelContext else { return }
+
+        let totalXPEarned = currentWordID
+            .flatMap { learnService.makePayload(wordID: $0, statesByID: stateByID) }
+            .map {
+                completeReview(
+                    for: $0,
+                    modelContext: modelContext,
+                    onAchievement: onAchievement
+                )
+            } ?? 0
+
+        presentResolvedWord(id: nextWordID, modelContext: modelContext, markAsShown: true)
+
+        if totalXPEarned > 0 {
+            onXPGained(totalXPEarned)
+        }
+
         updateAnalyticsUserProperties()
     }
 
@@ -188,28 +164,33 @@ final class HomeViewModel {
            let storedWordID = appState.wordOfTheDayID,
            let storedDate = appState.wordOfTheDayDate,
            Calendar.current.isDateInToday(storedDate) {
-            if todaysWord?.id != storedWordID {
-                todaysWord = learnService.makePayload(wordID: storedWordID, statesByID: stateByID)
+            if let storedPayload = learnService.makePayload(wordID: storedWordID, statesByID: stateByID) {
+                if todaysWord?.id != storedWordID {
+                    todaysWord = storedPayload
+                }
+                return
             }
+        }
+
+        if let scheduledWordID = notificationManager.scheduledNotificationWordID(for: Date()) {
+            presentResolvedWord(id: scheduledWordID, modelContext: modelContext, markAsShown: true)
+            updateAnalyticsUserProperties()
             return
         }
 
-        guard let nextWord = selectNextWord(excluding: nil) else {
+        guard let nextWord = selectNextWord(after: nil) else {
             todaysWord = nil
             persistChangesIfNeeded(modelContext: modelContext)
             return
         }
 
-        appState.wordOfTheDayID = nextWord.id
-        appState.wordOfTheDayDate = Date()
-        appState.recordWordShownToday(nextWord.id)
-        todaysWord = learnService.makePayload(wordID: nextWord.id, statesByID: stateByID)
-        persistChangesIfNeeded(modelContext: modelContext)
+        presentResolvedWord(id: nextWord.id, modelContext: modelContext, markAsShown: true)
         updateAnalyticsUserProperties()
     }
 
-    private func selectNextWord(excluding currentWordID: String?) -> CatalogWord? {
-        let pool = candidatePool.filter { $0.id != currentWordID }
+    private func selectNextWord(after currentWordID: String?, excluding excludedIDs: Set<String> = []) -> CatalogWord? {
+        let blockedIDs = excludedIDs.union(currentWordID.map { [$0] } ?? [])
+        let pool = candidatePool.filter { !blockedIDs.contains($0.id) }
         let context = LearnSelectionContext(
             currentWordID: currentWordID,
             preferredDifficulty: currentProgress.preferredDifficultyLevel,
@@ -251,6 +232,88 @@ final class HomeViewModel {
         lastLoadedAllowMixed = allowMixed
         lastLoadedLanguage = language
         return true
+    }
+
+    private func completeReview(
+        for current: LearnWordPayload,
+        modelContext: ModelContext,
+        onAchievement: (String) -> Void
+    ) -> Int {
+        var totalXPEarned = 0
+
+        let reviewResult = userStateStore.saveWordReview(
+            in: modelContext,
+            wordID: current.id,
+            quality: 3,
+            date: Date()
+        )
+        stateByID[current.id] = reviewResult.snapshot
+
+        totalXPEarned += 5
+        if let newLevel = currentProgress.addXP(5) {
+            let totalXP = currentProgress.totalXP
+            onAchievement("🎉 Level \(newLevel) reached!")
+            Task.detached(priority: .utility) {
+                FirebaseAnalyticsManager.shared.logLevelUp(newLevel: newLevel, totalXP: totalXP)
+            }
+        }
+
+        if let streakMilestone = currentProgress.registerLearningActivity() {
+            Task.detached(priority: .utility) {
+                FirebaseAnalyticsManager.shared.logStreakAchieved(streak: streakMilestone)
+            }
+        }
+
+        if reviewResult.becameLearned {
+            let masteryXP = max(current.difficultyLevel, 1) * 10
+            totalXPEarned += masteryXP
+            if let newLevel = currentProgress.addXP(masteryXP) {
+                let totalXP = currentProgress.totalXP
+                onAchievement("🎉 Level \(newLevel) reached!")
+                Task.detached(priority: .utility) {
+                    FirebaseAnalyticsManager.shared.logLevelUp(newLevel: newLevel, totalXP: totalXP)
+                }
+            }
+            currentProgress.totalWordsLearned += 1
+
+            let learnedCount = currentProgress.totalWordsLearned
+            Task.detached(priority: .utility) {
+                FirebaseAnalyticsManager.shared.logWordLearned(
+                    word: current.word,
+                    language: current.sourceLanguage,
+                    difficulty: current.difficultyLevel,
+                    totalLearned: learnedCount
+                )
+            }
+
+            if learnedCount.isMultiple(of: 10) {
+                onAchievement("🎉 \(learnedCount) words learned!")
+            }
+        }
+
+        Task.detached(priority: .utility) {
+            FirebaseAnalyticsManager.shared.logWordViewed(
+                word: current.word,
+                language: current.sourceLanguage,
+                difficulty: current.difficultyLevel,
+                timesViewed: reviewResult.snapshot.reviewCount
+            )
+        }
+
+        return totalXPEarned
+    }
+
+    private func presentResolvedWord(id wordID: String, modelContext: ModelContext, markAsShown: Bool) {
+        guard let payload = learnService.makePayload(wordID: wordID, statesByID: stateByID) else { return }
+
+        if markAsShown {
+            currentProgress.wordOfTheDayID = wordID
+            currentProgress.wordOfTheDayDate = Date()
+            currentProgress.recordWordShownToday(wordID)
+        }
+
+        todaysWord = payload
+        persistChangesIfNeeded(modelContext: modelContext)
     }
 
     private func persistChangesIfNeeded(modelContext: ModelContext) {

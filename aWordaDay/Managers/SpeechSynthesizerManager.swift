@@ -22,7 +22,7 @@ class SpeechSynthesizerManager: NSObject, ObservableObject, AVSpeechSynthesizerD
     private var isWarmedUp = false
     private var preloadedVoices: [String: AVSpeechSynthesisVoice] = [:]
 
-    private let supportedLanguages = [AppLanguage.pronunciationCode, "en-US", "zh-CN"]
+    private let supportedLanguages = [AppLanguage.pronunciationCode, "en-US"]
 
     override init() {
         super.init()

@@ -11,23 +11,33 @@ struct TimelineRow: View {
     let text: String
     let accent: Color
     let isLast: Bool
+    let showsMarker: Bool
+
+    init(text: String, accent: Color, isLast: Bool, showsMarker: Bool = true) {
+        self.text = text
+        self.accent = accent
+        self.isLast = isLast
+        self.showsMarker = showsMarker
+    }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(spacing: 0) {
-                Circle()
-                    .fill(accent)
-                    .frame(width: 10, height: 10)
-                if !isLast {
-                    Rectangle()
-                        .fill(accent.opacity(0.3))
-                        .frame(width: 2)
-                        .padding(.top, 2)
+        HStack(alignment: .top, spacing: showsMarker ? 12 : 0) {
+            if showsMarker {
+                VStack(spacing: 0) {
+                    Circle()
+                        .fill(accent)
+                        .frame(width: 10, height: 10)
+                    if !isLast {
+                        Rectangle()
+                            .fill(accent.opacity(0.3))
+                            .frame(width: 2)
+                            .padding(.top, 2)
+                    }
                 }
             }
 
             Text(text)
-                .font(DesignTokens.typography.caption(weight: .medium))
+                .font(DesignTokens.typography.callout(weight: .medium))
                 .foregroundStyle(DesignTokens.color.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -90,34 +100,54 @@ struct ExampleBubbleRow: View {
 
         var attributed = AttributedString(base)
         let lowerSentence = base.lowercased()
-        let lowerTarget = target.lowercased()
+        let lowerTarget = target.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // First try exact match
-        var foundExact = false
-        var searchRange = lowerSentence.startIndex..<lowerSentence.endIndex
-        while let foundRange = lowerSentence.range(of: lowerTarget, options: [], range: searchRange) {
-            foundExact = true
-            if let attrRange = Range(foundRange, in: attributed) {
+        guard !lowerTarget.isEmpty else {
+            return Text(base)
+                .font(DesignTokens.typography.callout(weight: .medium))
+                .foregroundStyle(DesignTokens.color.textDark)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+
+        let targetIsMultiWord = lowerTarget.contains { $0.isWhitespace }
+        let wordPattern = "[\\p{L}]+"
+
+        func applyHighlight(_ range: Range<String.Index>) {
+            if let attrRange = Range(range, in: attributed) {
                 attributed[attrRange].foregroundColor = color
                 attributed[attrRange].underlineStyle = .single
             }
-            searchRange = foundRange.upperBound..<lowerSentence.endIndex
         }
 
-        // If no exact match, try stem-based matching for conjugated/declined forms.
-        if !foundExact {
-            let wordPattern = "[\\p{L}]+"
-            if let regex = try? NSRegularExpression(pattern: wordPattern) {
-                let nsRange = NSRange(lowerSentence.startIndex..., in: lowerSentence)
-                let matches = regex.matches(in: lowerSentence, range: nsRange)
+        // First try exact match.
+        var foundExact = false
+        if targetIsMultiWord {
+            var searchRange = lowerSentence.startIndex..<lowerSentence.endIndex
+            while let foundRange = lowerSentence.range(of: lowerTarget, options: [], range: searchRange) {
+                foundExact = true
+                applyHighlight(foundRange)
+                searchRange = foundRange.upperBound..<lowerSentence.endIndex
+            }
+        } else if let regex = try? NSRegularExpression(pattern: wordPattern) {
+            let nsRange = NSRange(lowerSentence.startIndex..., in: lowerSentence)
+            let matches = regex.matches(in: lowerSentence, range: nsRange)
+
+            for match in matches {
+                guard let matchRange = Range(match.range, in: lowerSentence) else { continue }
+                let word = String(lowerSentence[matchRange])
+                if word == lowerTarget {
+                    foundExact = true
+                    applyHighlight(matchRange)
+                }
+            }
+
+            // If no whole-word exact match, try stem-based matching for inflected forms.
+            if !foundExact {
                 for match in matches {
                     guard let matchRange = Range(match.range, in: lowerSentence) else { continue }
                     let word = String(lowerSentence[matchRange])
                     if isInflectedMatch(word, lowerTarget) {
-                        if let attrRange = Range(matchRange, in: attributed) {
-                            attributed[attrRange].foregroundColor = color
-                            attributed[attrRange].underlineStyle = .single
-                        }
+                        applyHighlight(matchRange)
                     }
                 }
             }

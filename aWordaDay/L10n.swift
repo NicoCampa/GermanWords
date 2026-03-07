@@ -3,13 +3,13 @@
 //  aWordaDay
 //
 //  Centralized UI string localization.
-//  Reads AppLanguage.activeTargetLanguage at call-time to return English or Chinese.
+//  The app now ships with English-only explanations and UI copy.
 //
 
 import Foundation
 
 enum L10n {
-    private static var zh: Bool { AppLanguage.activeTargetLanguage == .chinese }
+    private static let zh = false
 
     // MARK: - Tabs
     enum Tabs {
@@ -310,6 +310,9 @@ enum L10n {
         static var collectionDiscovered: String { zh ? "已发现收藏" : "Collection discovered" }
         static func discoveredOfWords(_ n: Int, _ total: Int) -> String {
             zh ? "已发现 \(n) / \(total) 个单词" : "\(n) of \(total) words discovered"
+        }
+        static func discoveredWordsSummary(_ n: Int) -> String {
+            zh ? "已发现 \(n) 个单词。" : "\(n) words discovered."
         }
         static var browseDiscoveredWords: String { zh ? "浏览已发现的单词" : "Browse discovered words" }
         static var experienceTracker: String { zh ? "经验值追踪" : "Experience tracker" }
