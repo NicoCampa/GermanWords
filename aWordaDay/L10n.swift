@@ -247,25 +247,25 @@ enum L10n {
 
     // MARK: - Onboarding
     enum Onboarding {
-        static var welcomeToWorty: String { zh ? "欢迎来到Wolke！" : "Welcome to Wolke!" }
-        static var pickLevel: String { zh ? "选择你的级别开始" : "Pick your level to get started" }
-        static var startFullCatalog: String { zh ? "从完整德语词库开始学习" : "Start with the full German word catalog from day one" }
-        static var explanationsIn: String { zh ? "解释语言：" : "Explanations in:" }
-        static var whatYoullGet: String { zh ? "你将获得" : "What You'll Get" }
-        static var everythingToMaster: String { zh ? "掌握德语所需的一切" : "Everything you need to master German" }
-        static var dailyWords: String { zh ? "每日单词" : "Daily Words" }
-        static var dailyWordsDesc: String { zh ? "每天学习精选单词，结合间隔重复" : "Learn curated words every day with spaced repetition" }
-        static var smartReview: String { zh ? "智能复习" : "Smart Review" }
-        static var smartReviewDesc: String { zh ? "根据你的学习节奏循环安排新词和复习词" : "Rotate new and due words based on your learning pace" }
-        static var browseLibrary: String { zh ? "浏览词库" : "Browse Library" }
-        static var browseLibraryDesc: String { zh ? "快速搜索、筛选和重看你已经学过的词" : "Search, filter, and revisit the words you've already seen" }
-        static var funGames: String { zh ? "趣味游戏" : "Fun Games" }
-        static var funGamesDesc: String { zh ? "通过冠词游戏、单词冒险等练习" : "Practice with Der/Die/Das, Word Quest, and more" }
-        static var aiTutor: String { zh ? "AI导师" : "AI Tutor" }
-        static var aiTutorDesc: String { zh ? "与Wolke聊天，询问任何单词的问题" : "Chat with Wolke to ask questions about any word" }
-        static var youreAllSet: String { zh ? "一切就绪！" : "You're All Set!" }
-        static var letsStart: String { zh ? "开始你的学习之旅" : "Let's start your learning journey" }
-        static var getStarted: String { zh ? "开始" : "Get Started" }
+        static var welcomeTitle: String { zh ? "欢迎来到 Wolke" : "Welcome to Wolke" }
+        static var welcomeSubtitle: String { zh ? "一次学习一个德语单词，配有清晰翻译、例句和注释。" : "Learn German one word at a time with clear translations, examples, and notes." }
+        static var examplesAndNotes: String { zh ? "例句与注释" : "Examples and notes" }
+        static var examplesAndNotesDesc: String { zh ? "每张单词卡都会展示这个词在真实语境中的用法。" : "Each word card helps you see how a word is actually used." }
+        static var doubleTapToSave: String { zh ? "双击即可收藏" : "Double-tap to save" }
+        static var doubleTapToSaveDesc: String { zh ? "双击任意单词卡即可收藏，红心动画会立即确认。" : "Double-tap any word card to favorite it. A floating red heart confirms it right away." }
+        static var howItWorks: String { zh ? "Wolke 如何工作" : "How Wolke works" }
+        static var howItWorksSubtitle: String { zh ? "保持简单，按自己的节奏每天回来一点点。" : "Keep it simple and come back at your own pace." }
+        static var oneWordAtATime: String { zh ? "一次一个单词" : "One word at a time" }
+        static var oneWordAtATimeDesc: String { zh ? "阅读单词、翻译、例句和注释，然后在准备好时继续。" : "Read the word, translation, examples, and notes, then move on when you're ready." }
+        static var saveFavorites: String { zh ? "收藏重要词汇" : "Save favorites" }
+        static var saveFavoritesDesc: String { zh ? "双击任意单词卡，保留你想重新查看的词。" : "Double-tap any card to keep the words you want to revisit." }
+        static var browseYourLibrary: String { zh ? "浏览词库" : "Browse your library" }
+        static var browseYourLibraryDesc: String { zh ? "搜索词典，筛选收藏，并随时重新打开任何单词。" : "Search the dictionary, filter favorites, and reopen any word whenever you want." }
+        static var optionalDailyReminder: String { zh ? "可选每日提醒" : "Optional daily reminder" }
+        static var optionalDailyReminderDesc: String { zh ? "开启提醒后，Wolke 会在你选择的时间提醒你回来。" : "Turn on reminders and Wolke will bring you back at the time you choose." }
+        static var readyTitle: String { zh ? "准备开始了吗？" : "Ready to start?" }
+        static var readySubtitle: String { zh ? "提醒时间和语言都可以稍后在设置中修改。" : "You can change reminders and language later in Settings." }
+        static var startLearning: String { zh ? "开始学习" : "Start Learning" }
     }
 
     // MARK: - Progress

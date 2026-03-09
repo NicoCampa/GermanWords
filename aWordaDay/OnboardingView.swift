@@ -86,7 +86,7 @@ struct OnboardingWelcomePage: View {
 
                 // Title
                 VStack(spacing: 10) {
-                    Text(L10n.Onboarding.welcomeToWorty)
+                    Text(L10n.Onboarding.welcomeTitle)
                         .font(DesignTokens.typography.largeTitle(weight: .heavy))
                         .foregroundStyle(
                             LinearGradient(
@@ -100,7 +100,7 @@ struct OnboardingWelcomePage: View {
                         )
                         .multilineTextAlignment(.center)
 
-                    Text(L10n.Onboarding.startFullCatalog)
+                    Text(L10n.Onboarding.welcomeSubtitle)
                         .font(DesignTokens.typography.body(weight: .medium))
                         .foregroundStyle(DesignTokens.color.textLight)
                         .multilineTextAlignment(.center)
@@ -108,17 +108,17 @@ struct OnboardingWelcomePage: View {
 
                 VStack(spacing: 14) {
                     onboardingCallout(
-                        icon: "sparkles",
-                        tint: DesignTokens.color.learningGreen,
-                        title: "All levels included",
-                        detail: "New words now come from the full German catalog automatically."
+                        icon: "text.book.closed.fill",
+                        tint: DesignTokens.color.primary,
+                        title: L10n.Onboarding.examplesAndNotes,
+                        detail: L10n.Onboarding.examplesAndNotesDesc
                     )
 
                     onboardingCallout(
                         icon: "heart.fill",
                         tint: DesignTokens.color.difficultyHard,
-                        title: "Double-tap to favorite",
-                        detail: "Double-tap any word card to save it. A red heart pop confirms it instantly."
+                        title: L10n.Onboarding.doubleTapToSave,
+                        detail: L10n.Onboarding.doubleTapToSaveDesc
                     )
                 }
                 .padding(.horizontal, DesignTokens.spacing.lg2)
@@ -205,98 +205,95 @@ struct OnboardingFeaturesPage: View {
     @State private var showFeatures = false
 
     var body: some View {
-        VStack(spacing: DesignTokens.spacing.xl) {
-            Spacer()
-
-            // Header
-            VStack(spacing: DesignTokens.spacing.md) {
-                Text(L10n.Onboarding.whatYoullGet)
-                    .font(DesignTokens.typography.largeTitle(weight: .heavy))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                DesignTokens.color.textPrimary,
-                                DesignTokens.color.headingPrimary
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+        ScrollView {
+            VStack(spacing: DesignTokens.spacing.xl) {
+                VStack(spacing: DesignTokens.spacing.md) {
+                    Text(L10n.Onboarding.howItWorks)
+                        .font(DesignTokens.typography.largeTitle(weight: .heavy))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    DesignTokens.color.textPrimary,
+                                    DesignTokens.color.headingPrimary
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .multilineTextAlignment(.center)
+                        .multilineTextAlignment(.center)
 
-                Text(L10n.Onboarding.everythingToMaster)
-                    .font(DesignTokens.typography.body(weight: .medium))
-                    .foregroundStyle(DesignTokens.color.textLight)
-            }
-
-            // Feature rows
-            VStack(spacing: DesignTokens.spacing.md) {
-                OnboardingFeatureRow(
-                    icon: "book.fill",
-                    iconColor: DesignTokens.color.primary,
-                    title: L10n.Onboarding.dailyWords,
-                    description: L10n.Onboarding.dailyWordsDesc
-                )
-                .opacity(showFeatures ? 1 : 0)
-                .offset(y: showFeatures ? 0 : 20)
-
-                OnboardingFeatureRow(
-                    icon: "sparkles",
-                    iconColor: DesignTokens.color.success,
-                    title: L10n.Onboarding.smartReview,
-                    description: L10n.Onboarding.smartReviewDesc
-                )
-                .opacity(showFeatures ? 1 : 0)
-                .offset(y: showFeatures ? 0 : 20)
-                .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1), value: showFeatures)
-
-                OnboardingFeatureRow(
-                    icon: "text.magnifyingglass",
-                    iconColor: DesignTokens.color.info,
-                    title: L10n.Onboarding.browseLibrary,
-                    description: L10n.Onboarding.browseLibraryDesc
-                )
-                .opacity(showFeatures ? 1 : 0)
-                .offset(y: showFeatures ? 0 : 20)
-                .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: showFeatures)
-
-                OnboardingFeatureRow(
-                    icon: "sparkle.magnifyingglass",
-                    iconColor: DesignTokens.color.warning,
-                    title: L10n.Onboarding.funGames,
-                    description: L10n.Onboarding.funGamesDesc
-                )
-                .opacity(showFeatures ? 1 : 0)
-                .offset(y: showFeatures ? 0 : 20)
-                .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.3), value: showFeatures)
-            }
-            .padding(.horizontal, DesignTokens.spacing.lg2)
-
-            Spacer()
-
-            // Continue button
-            Button(action: onContinue) {
-                HStack(spacing: 10) {
-                    Text(L10n.Common.continueButton)
-                        .font(DesignTokens.typography.headline(weight: .bold))
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 16, weight: .bold))
+                    Text(L10n.Onboarding.howItWorksSubtitle)
+                        .font(DesignTokens.typography.body(weight: .medium))
+                        .foregroundStyle(DesignTokens.color.textLight)
+                        .multilineTextAlignment(.center)
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, DesignTokens.spacing.lg)
-                .background(
-                    LinearGradient(
-                        colors: [DesignTokens.color.info, DesignTokens.color.primary],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                .padding(.top, DesignTokens.spacing.xl)
+
+                VStack(spacing: DesignTokens.spacing.md) {
+                    OnboardingFeatureRow(
+                        icon: "book.fill",
+                        iconColor: DesignTokens.color.primary,
+                        title: L10n.Onboarding.oneWordAtATime,
+                        description: L10n.Onboarding.oneWordAtATimeDesc
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous))
-                    .shadow(color: DesignTokens.color.primary.opacity(0.3), radius: 12, x: 0, y: 6)
-                )
+                    .opacity(showFeatures ? 1 : 0)
+                    .offset(y: showFeatures ? 0 : 20)
+
+                    OnboardingFeatureRow(
+                        icon: "heart.fill",
+                        iconColor: DesignTokens.color.difficultyHard,
+                        title: L10n.Onboarding.saveFavorites,
+                        description: L10n.Onboarding.saveFavoritesDesc
+                    )
+                    .opacity(showFeatures ? 1 : 0)
+                    .offset(y: showFeatures ? 0 : 20)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1), value: showFeatures)
+
+                    OnboardingFeatureRow(
+                        icon: "books.vertical.fill",
+                        iconColor: DesignTokens.color.info,
+                        title: L10n.Onboarding.browseYourLibrary,
+                        description: L10n.Onboarding.browseYourLibraryDesc
+                    )
+                    .opacity(showFeatures ? 1 : 0)
+                    .offset(y: showFeatures ? 0 : 20)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: showFeatures)
+
+                    OnboardingFeatureRow(
+                        icon: "bell.fill",
+                        iconColor: DesignTokens.color.warning,
+                        title: L10n.Onboarding.optionalDailyReminder,
+                        description: L10n.Onboarding.optionalDailyReminderDesc
+                    )
+                    .opacity(showFeatures ? 1 : 0)
+                    .offset(y: showFeatures ? 0 : 20)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.3), value: showFeatures)
+                }
+                .padding(.horizontal, DesignTokens.spacing.lg2)
+
+                Button(action: onContinue) {
+                    HStack(spacing: 10) {
+                        Text(L10n.Common.continueButton)
+                            .font(DesignTokens.typography.headline(weight: .bold))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 16, weight: .bold))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, DesignTokens.spacing.lg)
+                    .background(
+                        LinearGradient(
+                            colors: [DesignTokens.color.info, DesignTokens.color.primary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous))
+                        .shadow(color: DesignTokens.color.primary.opacity(0.3), radius: 12, x: 0, y: 6)
+                    )
+                }
+                .padding(.horizontal, DesignTokens.spacing.lg2)
+                .padding(.bottom, 40)
             }
-            .padding(.horizontal, DesignTokens.spacing.lg2)
-            .padding(.bottom, 40)
         }
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
@@ -309,40 +306,23 @@ struct OnboardingFeaturesPage: View {
 // MARK: - Page 3: Ready
 
 struct OnboardingReadyPage: View {
-    @State private var isAnimating = false
+    @State private var mascotScale: CGFloat = 0.92
     let onComplete: () -> Void
 
     var body: some View {
         VStack(spacing: DesignTokens.spacing.xxl) {
             Spacer()
 
-            // Animated checkmark
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                DesignTokens.color.success,
-                                DesignTokens.color.success.opacity(0.8)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(isAnimating ? 1.0 : 0.5)
-                    .opacity(isAnimating ? 1.0 : 0.0)
-
-                Image(systemName: "checkmark")
-                    .font(.system(size: 60, weight: .bold))
-                    .foregroundStyle(.white)
-                    .scaleEffect(isAnimating ? 1.0 : 0.5)
-                    .opacity(isAnimating ? 1.0 : 0.0)
-            }
-            .designSystemShadow(DesignTokens.shadow.heavy)
+            SharedCloudMascot(scale: mascotScale)
+                .designSystemShadow(DesignTokens.shadow.medium)
+                .onAppear {
+                    withAnimation(.spring(response: 1.0, dampingFraction: 0.65)) {
+                        mascotScale = 1.12
+                    }
+                }
 
             VStack(spacing: DesignTokens.spacing.lg) {
-                Text(L10n.Onboarding.youreAllSet)
+                Text(L10n.Onboarding.readyTitle)
                     .font(DesignTokens.typography.largeTitle(weight: .heavy))
                     .foregroundStyle(
                         LinearGradient(
@@ -356,7 +336,7 @@ struct OnboardingReadyPage: View {
                     )
                     .multilineTextAlignment(.center)
 
-                Text(L10n.Onboarding.letsStart)
+                Text(L10n.Onboarding.readySubtitle)
                     .font(DesignTokens.typography.headline(weight: .medium))
                     .foregroundStyle(DesignTokens.color.textLight)
                     .multilineTextAlignment(.center)
@@ -369,7 +349,7 @@ struct OnboardingReadyPage: View {
                 onComplete()
             }) {
                 HStack(spacing: DesignTokens.spacing.md) {
-                    Text(L10n.Onboarding.getStarted)
+                    Text(L10n.Onboarding.startLearning)
                         .font(DesignTokens.typography.headline(weight: .bold))
                     Image(systemName: "arrow.right.circle.fill")
                         .font(.system(size: 24, weight: .bold))
@@ -397,11 +377,6 @@ struct OnboardingReadyPage: View {
             Spacer()
         }
         .padding()
-        .onAppear {
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.6).delay(0.2)) {
-                isAnimating = true
-            }
-        }
     }
 }
 
@@ -433,7 +408,7 @@ struct OnboardingFeatureRow: View {
                 Text(description)
                     .font(DesignTokens.typography.caption(weight: .medium))
                     .foregroundStyle(DesignTokens.color.textLight)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
