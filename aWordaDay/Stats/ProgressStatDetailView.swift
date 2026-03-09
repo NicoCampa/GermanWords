@@ -137,6 +137,9 @@ struct ProgressStatDetailView: View {
             }
             return L10n.StatDetail.discoveredWordsSummary(learnedWords.count)
         case .level:
+            if progress.currentLevel >= LevelProgression.maxLevel {
+                return L10n.StatDetail.maxLevelSubtitle(progress.currentLevel)
+            }
             let nextLevelXP = progress.xpForNextLevel()
             let remaining = max(nextLevelXP - progress.totalXP, 0)
             return L10n.StatDetail.levelSubtitle(remaining, progress.currentLevel + 1)
@@ -211,25 +214,31 @@ struct ProgressStatDetailView: View {
 
     private var levelSection: some View {
         VStack(spacing: 18) {
+            let isAtMaxLevel = progress.currentLevel >= LevelProgression.maxLevel
             let nextLevelXP = progress.xpForNextLevel()
             let currentLevelXP = progress.xpRequiredForLevel(progress.currentLevel)
             let xpIntoCurrentLevel = max(progress.totalXP - currentLevelXP, 0)
             let xpNeededForNext = max(nextLevelXP - currentLevelXP, 1)
-            let fraction = Double(xpIntoCurrentLevel) / Double(xpNeededForNext)
+            let fraction = isAtMaxLevel ? 1.0 : Double(xpIntoCurrentLevel) / Double(xpNeededForNext)
 
             statHighlightCard(
                 title: L10n.StatDetail.experienceTracker,
                 rows: [
                     (L10n.StatDetail.currentLevel, L10n.Stats.levelN(progress.currentLevel)),
                     (L10n.StatDetail.xpEarned, "\(progress.totalXP) XP"),
-                    (L10n.StatDetail.nextLevelTarget, "\(nextLevelXP) XP total")
+                    (
+                        isAtMaxLevel ? L10n.StatDetail.maxLevel : L10n.StatDetail.nextLevelTarget,
+                        isAtMaxLevel ? L10n.Stats.levelN(progress.currentLevel) : "\(nextLevelXP) XP total"
+                    )
                 ]
             )
 
             progressBar(
                 title: L10n.StatDetail.xpProgress,
                 progress: fraction,
-                footer: L10n.StatDetail.xpThisLevel(xpIntoCurrentLevel, xpNeededForNext)
+                footer: isAtMaxLevel
+                    ? L10n.StatDetail.maxLevelProgress(progress.totalXP)
+                    : L10n.StatDetail.xpThisLevel(xpIntoCurrentLevel, xpNeededForNext)
             )
 
             if let recentWord = todaysWords.last ?? learnedWords.last {

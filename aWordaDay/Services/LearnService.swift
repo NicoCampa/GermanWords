@@ -17,15 +17,8 @@ final class LearnService {
         self.learningManager = learningManager
     }
 
-    func loadCandidatePool(language: String, preferredDifficulty: Int?, allowMixedDifficulty: Bool) -> [CatalogWord] {
-        catalogStore.fetchCandidateWords(
-            language: language,
-            difficultyPolicy: CatalogDifficultyPolicy(
-                preferredDifficulty: preferredDifficulty,
-                allowMixedDifficulty: allowMixedDifficulty
-            ),
-            limit: 0
-        )
+    func loadCandidatePool(language: String) -> [CatalogWord] {
+        catalogStore.fetchCandidateWords(language: language, limit: 0)
     }
 
     func selectNextWord(
@@ -37,9 +30,7 @@ final class LearnService {
             from: candidates,
             statesByID: statesByID,
             language: AppLanguage.sourceCode,
-            lastWordID: context.currentWordID,
-            preferredDifficulty: context.preferredDifficulty,
-            allowMixed: context.allowMixedDifficulty
+            lastWordID: context.currentWordID
         )
     }
 

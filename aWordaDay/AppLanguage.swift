@@ -18,7 +18,7 @@ enum AppLanguage {
     static let pronunciationCode = "de-DE"
 
     /// The user's chosen target language for translations/explanations.
-    /// Set on app launch from UserProgress.targetLanguage.
+    /// Set on app launch from AppState.targetLanguage.
     static var activeTargetLanguage: TargetLanguage = .english
 
     /// Bundled JSON export filename without the `.json` extension.

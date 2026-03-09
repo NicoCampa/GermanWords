@@ -65,7 +65,7 @@ enum L10n {
         static var noWordsYet: String { zh ? "还没有单词" : "No words yet" }
         static var noWordsDesc: String { zh ? "在设置中添加词汇或导入词库以开始学习。" : "Add some vocabulary or import a pack from Settings to start learning." }
         static var openSettings: String { zh ? "打开设置" : "Open Settings" }
-        static var askWortyAbout: String { zh ? "问Worty关于这个词" : "Ask Worty about this word" }
+        static var askWortyAbout: String { zh ? "问Wolke关于这个词" : "Ask Wolke about this word" }
         static var listenToPronunciation: String { zh ? "听发音" : "Listen to pronunciation" }
     }
 
@@ -144,6 +144,9 @@ enum L10n {
         static func xpToLevel(_ current: Int, _ needed: Int, _ next: Int) -> String {
             zh ? "\(current) / \(needed) 经验值升至等级 \(next)" : "\(current) / \(needed) XP to level \(next)"
         }
+        static func maxLevelReached(_ level: Int) -> String {
+            zh ? "已达到最高等级 \(level)" : "Max level \(level) reached"
+        }
         static func discoveredOf(_ n: Int, _ total: Int) -> String {
             zh ? "已发现 \(n) / \(total) 个单词" : "\(n) of \(total) words discovered"
         }
@@ -153,10 +156,10 @@ enum L10n {
 
     // MARK: - Chat
     enum Chat {
-        static var chatWithWorty: String { zh ? "与Worty聊天" : "Chat with Worty" }
-        static var emptyTitle: String { zh ? "你好！我是Worty" : "Hallo! I'm Worty" }
+        static var chatWithWorty: String { zh ? "与Wolke聊天" : "Chat with Wolke" }
+        static var emptyTitle: String { zh ? "你好！我是Wolke" : "Hallo! I'm Wolke" }
         static var emptySubtitle: String { zh ? "问我任何关于德语单词、语法或发音的问题！" : "Ask me anything about German words, grammar, or pronunciation!" }
-        static var inputPlaceholder: String { zh ? "问Worty…" : "Ask Worty..." }
+        static var inputPlaceholder: String { zh ? "问Wolke…" : "Ask Wolke..." }
         // Generic suggestion chips (no word context)
         static var chipTeachNewWord: String { zh ? "教我一个新单词" : "Teach me a new word" }
         static var chipExplainCases: String { zh ? "解释德语格" : "Explain German cases" }
@@ -244,8 +247,9 @@ enum L10n {
 
     // MARK: - Onboarding
     enum Onboarding {
-        static var welcomeToWorty: String { zh ? "欢迎来到Worty！" : "Welcome to Worty!" }
+        static var welcomeToWorty: String { zh ? "欢迎来到Wolke！" : "Welcome to Wolke!" }
         static var pickLevel: String { zh ? "选择你的级别开始" : "Pick your level to get started" }
+        static var startFullCatalog: String { zh ? "从完整德语词库开始学习" : "Start with the full German word catalog from day one" }
         static var explanationsIn: String { zh ? "解释语言：" : "Explanations in:" }
         static var whatYoullGet: String { zh ? "你将获得" : "What You'll Get" }
         static var everythingToMaster: String { zh ? "掌握德语所需的一切" : "Everything you need to master German" }
@@ -258,7 +262,7 @@ enum L10n {
         static var funGames: String { zh ? "趣味游戏" : "Fun Games" }
         static var funGamesDesc: String { zh ? "通过冠词游戏、单词冒险等练习" : "Practice with Der/Die/Das, Word Quest, and more" }
         static var aiTutor: String { zh ? "AI导师" : "AI Tutor" }
-        static var aiTutorDesc: String { zh ? "与Worty聊天，询问任何单词的问题" : "Chat with Worty to ask questions about any word" }
+        static var aiTutorDesc: String { zh ? "与Wolke聊天，询问任何单词的问题" : "Chat with Wolke to ask questions about any word" }
         static var youreAllSet: String { zh ? "一切就绪！" : "You're All Set!" }
         static var letsStart: String { zh ? "开始你的学习之旅" : "Let's start your learning journey" }
         static var getStarted: String { zh ? "开始" : "Get Started" }
@@ -302,6 +306,9 @@ enum L10n {
                 ? (zh ? "你已经可以升级了！继续学习以进步。" : "You're eligible to level up! Keep learning to advance.")
                 : (zh ? "还需 \(remaining) 经验值升至等级 \(next)。" : "\(remaining) XP to reach level \(next).")
         }
+        static func maxLevelSubtitle(_ level: Int) -> String {
+            zh ? "你已完成当前词库的等级进度，达到等级 \(level)。" : "You've completed the current catalog progression and reached level \(level)."
+        }
         static var learningMilestones: String { zh ? "学习里程碑" : "Learning milestones" }
         static var wordsDiscovered: String { zh ? "已发现单词" : "Words discovered" }
         static var fullyLearned: String { zh ? "完全学会" : "Fully learned" }
@@ -319,9 +326,13 @@ enum L10n {
         static var currentLevel: String { zh ? "当前等级" : "Current level" }
         static var xpEarned: String { zh ? "已获经验值" : "XP earned" }
         static var nextLevelTarget: String { zh ? "下一等级目标" : "Next level target" }
+        static var maxLevel: String { zh ? "最高等级" : "Max level" }
         static var xpProgress: String { zh ? "经验值进度" : "XP progress" }
         static func xpThisLevel(_ current: Int, _ needed: Int) -> String {
             zh ? "本等级 \(current) / \(needed) 经验值" : "\(current) / \(needed) XP this level"
+        }
+        static func maxLevelProgress(_ totalXP: Int) -> String {
+            zh ? "已累计 \(totalXP) 经验值并完成当前等级曲线" : "\(totalXP) XP collected across the full progression"
         }
         static func practiceBoost(_ word: String) -> String {
             zh ? "再次练习 \"\(word)\" 可以获得更多经验值。" : "Practicing \"\(word)\" again boosts your XP gains."

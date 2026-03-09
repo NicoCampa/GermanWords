@@ -6,17 +6,12 @@
 import Foundation
 import SQLite3
 
-struct CatalogDifficultyPolicy: Hashable {
-    let preferredDifficulty: Int?
-    let allowMixedDifficulty: Bool
-}
-
 protocol CatalogStoreProtocol: AnyObject {
     func fetchWord(id: String) -> CatalogWordDetail?
     func fetchBrowseRows(query: BrowseQuery) -> [CatalogWordDetail]
     func fetchBrowseRowCount(query: BrowseQuery) -> Int
     func fetchWords(ids: [String]) -> [CatalogWordDetail]
-    func fetchCandidateWords(language: String, difficultyPolicy: CatalogDifficultyPolicy, limit: Int) -> [CatalogWord]
+    func fetchCandidateWords(language: String, limit: Int) -> [CatalogWord]
     func fetchNotificationCandidateWords(limit: Int) -> [CatalogWordDetail]
     func totalWordCount(for language: String) -> Int
 }
@@ -191,32 +186,23 @@ final class SQLiteCatalogStore: CatalogStoreProtocol {
         }
     }
 
-    func fetchCandidateWords(language: String, difficultyPolicy: CatalogDifficultyPolicy, limit: Int) -> [CatalogWord] {
+    func fetchCandidateWords(language: String, limit: Int) -> [CatalogWord] {
         queue.sync {
             guard let database else { return [] }
-
-            var conditions = ["source_language = ?"]
-            var bindings = [language]
-
-            if let preferredDifficulty = difficultyPolicy.preferredDifficulty,
-               !difficultyPolicy.allowMixedDifficulty,
-               let selectedBucket = DifficultyBucket(selection: preferredDifficulty) {
-                conditions.append(selectedBucket.sqlFilterClause)
-            }
 
             let limitClause = limit > 0 ? "LIMIT \(limit)" : ""
             let sql = """
             SELECT id, word, translation, source_language, pronunciation_code,
                    difficulty_level, cefr_level, part_of_speech, usage_notes, date_added
             FROM words
-            WHERE \(conditions.joined(separator: " AND "))
+            WHERE source_language = ?
             ORDER BY RANDOM()
             \(limitClause)
             """
 
             guard let statement = prepareStatement(database: database, sql: sql) else { return [] }
             defer { sqlite3_finalize(statement) }
-            bind(strings: bindings, to: statement)
+            bind(strings: [language], to: statement)
 
             var words: [CatalogWord] = []
             while sqlite3_step(statement) == SQLITE_ROW {

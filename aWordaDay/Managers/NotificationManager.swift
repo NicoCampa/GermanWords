@@ -12,6 +12,15 @@ import SwiftData
 private let notificationWordIDKey = "notification_word_id"
 private let scheduledWordIDsKey = "daily_notification_word_ids"
 
+enum NotificationDefaults {
+    static let reminderHour = 18
+    static let reminderMinute = 0
+
+    static var reminderTimeComponents: DateComponents {
+        DateComponents(hour: reminderHour, minute: reminderMinute)
+    }
+}
+
 @MainActor
 @Observable
 class NotificationManager: NSObject, NotificationManagerProtocol {
@@ -29,7 +38,7 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
     private let scheduleHorizonDays = 30
 
     var isNotificationsEnabled = false
-    var dailyNotificationTime = DateComponents(hour: 9, minute: 0)
+    var dailyNotificationTime = NotificationDefaults.reminderTimeComponents
     private(set) var pendingNotificationWordID: String?
     
     private override init() {
@@ -47,19 +56,19 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
                 let time = try JSONDecoder().decode(DateComponents.self, from: timeData)
                 dailyNotificationTime = time
                 #if DEBUG
-                print("✅ Loaded notification time: \(time.hour ?? 9):\(String(format: "%02d", time.minute ?? 0))")
+                print("✅ Loaded notification time: \(time.hour ?? NotificationDefaults.reminderHour):\(String(format: "%02d", time.minute ?? NotificationDefaults.reminderMinute))")
                 #endif
             } catch {
                 #if DEBUG
-                print("⚠️ Failed to decode notification time, using default 9:00 AM: \(error)")
+                print("⚠️ Failed to decode notification time, using default 18:00: \(error)")
                 #endif
-                dailyNotificationTime = DateComponents(hour: 9, minute: 0)
+                dailyNotificationTime = NotificationDefaults.reminderTimeComponents
             }
         } else {
             #if DEBUG
-            print("ℹ️ No saved notification time, using default 9:00 AM")
+            print("ℹ️ No saved notification time, using default 18:00")
             #endif
-            dailyNotificationTime = DateComponents(hour: 9, minute: 0)
+            dailyNotificationTime = NotificationDefaults.reminderTimeComponents
         }
     }
 
@@ -69,7 +78,7 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
             let timeData = try JSONEncoder().encode(dailyNotificationTime)
             UserDefaults.standard.set(timeData, forKey: dailyNotificationTimeKey)
             #if DEBUG
-            print("✅ Saved notification time: \(dailyNotificationTime.hour ?? 9):\(String(format: "%02d", dailyNotificationTime.minute ?? 0))")
+            print("✅ Saved notification time: \(dailyNotificationTime.hour ?? NotificationDefaults.reminderHour):\(String(format: "%02d", dailyNotificationTime.minute ?? NotificationDefaults.reminderMinute))")
             #endif
         } catch {
             #if DEBUG
@@ -227,8 +236,8 @@ class NotificationManager: NSObject, NotificationManagerProtocol {
     }
 
     private func notificationTriggerDate(for day: Date) -> Date {
-        let hour = dailyNotificationTime.hour ?? 9
-        let minute = dailyNotificationTime.minute ?? 0
+        let hour = dailyNotificationTime.hour ?? NotificationDefaults.reminderHour
+        let minute = dailyNotificationTime.minute ?? NotificationDefaults.reminderMinute
         return calendar.date(
             bySettingHour: hour,
             minute: minute,

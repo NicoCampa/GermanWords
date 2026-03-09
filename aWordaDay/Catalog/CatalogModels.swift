@@ -181,6 +181,7 @@ struct LearnWordPayload: Identifiable, Hashable, WordDisplayable {
 
     var reviewCount: Int { state.reviewCount }
     var isLearned: Bool { state.isLearned }
+    var isFavorite: Bool { state.isFavorite }
 }
 
 struct StatsCatalogSnapshot: Hashable {
@@ -202,8 +203,6 @@ struct BrowseQuery: Hashable {
 
 struct LearnSelectionContext: Hashable {
     let currentWordID: String?
-    let preferredDifficulty: Int?
-    let allowMixedDifficulty: Bool
     let recentWordIDs: [String]
     let todaySeenIDs: [String]
 }

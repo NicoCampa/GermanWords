@@ -10,8 +10,6 @@ import SwiftData
 
 struct OnboardingView: View {
     @State private var currentPage = 0
-    @State private var selectedDifficulty: Int? = nil
-    @State private var allowMixed: Bool = false
     let onComplete: () -> Void
 
     var body: some View {
@@ -44,8 +42,6 @@ struct OnboardingView: View {
                 // Page content
                 TabView(selection: $currentPage) {
                     OnboardingWelcomePage(
-                        selectedDifficulty: $selectedDifficulty,
-                        allowMixed: $allowMixed,
                         onContinue: {
                             withAnimation { currentPage = 1 }
                         }
@@ -67,15 +63,13 @@ struct OnboardingView: View {
     }
 }
 
-// MARK: - Page 1: Welcome + Difficulty Selection
+// MARK: - Page 1: Welcome
 
 struct OnboardingWelcomePage: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var appStates: [AppState]
 
     @State private var mascotScale: CGFloat = 0.8
-    @Binding var selectedDifficulty: Int?
-    @Binding var allowMixed: Bool
     let onContinue: () -> Void
 
     var body: some View {
@@ -106,73 +100,32 @@ struct OnboardingWelcomePage: View {
                         )
                         .multilineTextAlignment(.center)
 
-                    Text(L10n.Onboarding.pickLevel)
+                    Text(L10n.Onboarding.startFullCatalog)
                         .font(DesignTokens.typography.body(weight: .medium))
                         .foregroundStyle(DesignTokens.color.textLight)
+                        .multilineTextAlignment(.center)
                 }
 
-                // Difficulty Cards
                 VStack(spacing: 14) {
-                    DifficultyCard(
-                        level: 1,
-                        title: L10n.Difficulty.easy,
-                        iconColor: DesignTokens.color.difficultyEasy,
-                        levelSummary: DifficultyBucket.easy.levelSummary,
-                        description: DifficultyBucket.easy.description,
-                        exampleWords: DifficultyBucket.easy.exampleWords,
-                        isSelected: selectedDifficulty == 1,
-                        onTap: { selectedDifficulty = 1 }
+                    onboardingCallout(
+                        icon: "sparkles",
+                        tint: DesignTokens.color.learningGreen,
+                        title: "All levels included",
+                        detail: "New words now come from the full German catalog automatically."
                     )
 
-                    DifficultyCard(
-                        level: 2,
-                        title: L10n.Difficulty.medium,
-                        iconColor: DesignTokens.color.difficultyMedium,
-                        levelSummary: DifficultyBucket.medium.levelSummary,
-                        description: DifficultyBucket.medium.description,
-                        exampleWords: DifficultyBucket.medium.exampleWords,
-                        isSelected: selectedDifficulty == 2,
-                        onTap: { selectedDifficulty = 2 }
-                    )
-
-                    DifficultyCard(
-                        level: 3,
-                        title: L10n.Difficulty.hard,
-                        iconColor: DesignTokens.color.difficultyHard,
-                        levelSummary: DifficultyBucket.hard.levelSummary,
-                        description: DifficultyBucket.hard.description,
-                        exampleWords: DifficultyBucket.hard.exampleWords,
-                        isSelected: selectedDifficulty == 3,
-                        onTap: { selectedDifficulty = 3 }
+                    onboardingCallout(
+                        icon: "heart.fill",
+                        tint: DesignTokens.color.difficultyHard,
+                        title: "Double-tap to favorite",
+                        detail: "Double-tap any word card to save it. A red heart pop confirms it instantly."
                     )
                 }
-                .padding(.horizontal, DesignTokens.spacing.lg2)
-
-                // Mixed difficulty toggle
-                Toggle(isOn: $allowMixed) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.Difficulty.mixAllLevels)
-                            .font(DesignTokens.typography.callout(weight: .semibold))
-                            .foregroundStyle(DesignTokens.color.textPrimary)
-
-                        Text(L10n.Difficulty.mixAllLevelsDesc)
-                            .font(DesignTokens.typography.caption(weight: .medium))
-                            .foregroundStyle(DesignTokens.color.textLight)
-                    }
-                }
-                .toggleStyle(SwitchToggleStyle(tint: DesignTokens.color.info))
-                .padding(.horizontal, DesignTokens.spacing.xl)
-                .padding(.vertical, DesignTokens.spacing.lg)
-                .background(
-                    RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg)
-                        .fill(DesignTokens.color.sectionBackground)
-                        .designSystemShadow(DesignTokens.shadow.light)
-                )
                 .padding(.horizontal, DesignTokens.spacing.lg2)
 
                 // Continue button
                 Button(action: {
-                    saveDifficultyPreference()
+                    initializeLearningPreferences()
                     onContinue()
                 }) {
                     HStack(spacing: 10) {
@@ -187,17 +140,16 @@ struct OnboardingWelcomePage: View {
                     .background(
                         LinearGradient(
                             colors: [
-                                selectedDifficulty != nil ? DesignTokens.color.info : DesignTokens.color.textMuted.opacity(0.5),
-                                selectedDifficulty != nil ? DesignTokens.color.primary : DesignTokens.color.textMuted.opacity(0.4)
+                                DesignTokens.color.info,
+                                DesignTokens.color.primary
                             ],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous))
-                        .shadow(color: selectedDifficulty != nil ? DesignTokens.color.primary.opacity(0.3) : Color.clear, radius: 12, x: 0, y: 6)
+                        .shadow(color: DesignTokens.color.primary.opacity(0.3), radius: 12, x: 0, y: 6)
                     )
                 }
-                .disabled(selectedDifficulty == nil)
                 .padding(.horizontal, DesignTokens.spacing.lg2)
                 .padding(.bottom, 40)
             }
@@ -205,10 +157,41 @@ struct OnboardingWelcomePage: View {
         }
     }
 
-    private func saveDifficultyPreference() {
+    private func onboardingCallout(icon: String, tint: Color, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: DesignTokens.spacing.md) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(DesignTokens.typography.callout(weight: .bold))
+                    .foregroundStyle(DesignTokens.color.textPrimary)
+
+                Text(detail)
+                    .font(DesignTokens.typography.caption(weight: .medium))
+                    .foregroundStyle(DesignTokens.color.textLight)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, DesignTokens.spacing.lg)
+        .padding(.vertical, DesignTokens.spacing.lg)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg)
+                .fill(DesignTokens.color.sectionBackground)
+                .designSystemShadow(DesignTokens.shadow.light)
+        )
+    }
+
+    private func initializeLearningPreferences() {
         let progress = AppState.current(in: modelContext, cached: appStates)
-        progress.preferredDifficultyLevel = selectedDifficulty
-        progress.allowMixedDifficulty = allowMixed
         progress.targetLanguage = .english
         AppLanguage.activeTargetLanguage = .english
         try? modelContext.save()

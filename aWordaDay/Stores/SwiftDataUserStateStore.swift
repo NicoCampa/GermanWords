@@ -12,6 +12,7 @@ protocol UserStateStoreProtocol {
     func loadWordState(in modelContext: ModelContext, wordID: String) -> UserWordState
     func loadWordStates(in modelContext: ModelContext) -> [UserWordState]
     func loadWordStates(in modelContext: ModelContext, wordIDs: [String]) -> [String: UserWordStateSnapshot]
+    func saveWordView(in modelContext: ModelContext, wordID: String, date: Date) -> UserWordViewResult
     func saveWordReview(in modelContext: ModelContext, wordID: String, quality: Int, date: Date) -> UserWordReviewResult
     func toggleFavorite(in modelContext: ModelContext, wordID: String) -> UserWordStateSnapshot
     func recordWordShown(in modelContext: ModelContext, wordID: String, date: Date)
@@ -53,6 +54,11 @@ struct SwiftDataUserStateStore: UserStateStoreProtocol {
             .reduce(into: [:]) { partialResult, state in
                 partialResult[state.wordID] = state.snapshot
             }
+    }
+
+    func saveWordView(in modelContext: ModelContext, wordID: String, date: Date) -> UserWordViewResult {
+        let state = loadWordState(in: modelContext, wordID: wordID)
+        return state.applyView(viewDate: date)
     }
 
     func saveWordReview(in modelContext: ModelContext, wordID: String, quality: Int, date: Date) -> UserWordReviewResult {

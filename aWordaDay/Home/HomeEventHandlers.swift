@@ -43,15 +43,20 @@ extension ContentView {
 
     func triggerXPGainAnimation(amount: Int) {
         guard amount > 0 else { return }
+        xpHideWorkItem?.cancel()
         xpGained = amount
+        xpAnimationToken = UUID()
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
             showingXPAnimation = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+
+        let hideWorkItem = DispatchWorkItem {
             withAnimation(.easeOut(duration: 0.3)) {
                 showingXPAnimation = false
             }
         }
+        xpHideWorkItem = hideWorkItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: hideWorkItem)
     }
 
     func showAchievementToast(_ message: String) {

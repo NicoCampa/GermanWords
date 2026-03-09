@@ -12,7 +12,6 @@ struct SettingsView: View {
     @State private var notificationManager = NotificationManager.shared
 
     @State private var showingNotificationSettings = false
-    @State private var showingDifficultyPicker = false
     @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
     @State private var hasScheduledReminder = false
 
@@ -58,7 +57,6 @@ struct SettingsView: View {
 
                 ScrollView {
                     VStack(spacing: DesignTokens.spacing.lg2) {
-                        learningCard
                         remindersCard
                         aboutCard
                     }
@@ -88,36 +86,6 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingNotificationSettings, onDismiss: refreshNotificationSummary) {
             NotificationSettingsView()
-        }
-        .sheet(isPresented: $showingDifficultyPicker) {
-            DifficultyPickerSheet(
-                currentProgress: currentProgress,
-                modelContext: modelContext,
-                onDismiss: { showingDifficultyPicker = false }
-            )
-        }
-    }
-
-    private var learningCard: some View {
-        SettingsCard {
-            VStack(alignment: .leading, spacing: DesignTokens.spacing.sm) {
-                sectionTitle(
-                    title: L10n.Settings.learningSection,
-                    icon: "brain.head.profile",
-                    tint: DesignTokens.color.learningGreen
-                )
-
-                VStack(spacing: 0) {
-                    SettingsNavigationRow(
-                        icon: "dial.medium.fill",
-                        tint: DesignTokens.color.learningGreen,
-                        title: L10n.Settings.difficultyLevel,
-                        subtitle: L10n.Settings.difficultyPickerDesc,
-                        value: getDifficultyDisplayName(),
-                        action: { showingDifficultyPicker = true }
-                    )
-                }
-            }
         }
     }
 
@@ -213,8 +181,8 @@ struct SettingsView: View {
     }
 
     private func formattedNotificationTime() -> String {
-        let hour = notificationManager.dailyNotificationTime.hour ?? 9
-        let minute = notificationManager.dailyNotificationTime.minute ?? 0
+        let hour = notificationManager.dailyNotificationTime.hour ?? NotificationDefaults.reminderHour
+        let minute = notificationManager.dailyNotificationTime.minute ?? NotificationDefaults.reminderMinute
 
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -223,22 +191,6 @@ struct SettingsView: View {
         return formatter.string(from: date)
     }
 
-    private func getDifficultyDisplayName() -> String {
-        if currentProgress.allowMixedDifficulty {
-            return L10n.Settings.mixedAllLevels
-        }
-
-        guard let difficulty = currentProgress.preferredDifficultyLevel else {
-            return L10n.Settings.notSet
-        }
-
-        switch difficulty {
-        case 1: return L10n.Difficulty.easy
-        case 2: return L10n.Difficulty.medium
-        case 3: return L10n.Difficulty.hard
-        default: return L10n.Settings.notSet
-        }
-    }
 }
 
 // MARK: - Settings Card
@@ -605,169 +557,5 @@ struct DetailCard: View {
                 .fill(DesignTokens.color.sectionBackground)
                 .shadow(color: DesignTokens.color.primary.opacity(0.12), radius: 10, x: 0, y: 6)
         )
-    }
-}
-
-// MARK: - Difficulty Picker Sheet
-
-struct DifficultyPickerSheet: View {
-    let currentProgress: AppState
-    let modelContext: ModelContext
-    let onDismiss: () -> Void
-
-    @State private var selectedDifficulty: Int?
-    @State private var allowMixed: Bool = false
-
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: DesignTokens.spacing.xl) {
-                        // Header description
-                        VStack(spacing: DesignTokens.spacing.md) {
-                            Text(L10n.Settings.difficultyPickerDesc)
-                                .font(DesignTokens.typography.callout(weight: .medium))
-                                .foregroundStyle(DesignTokens.color.textSubtle)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, DesignTokens.spacing.lg2)
-                        }
-                        .padding(.top, DesignTokens.spacing.lg)
-
-                        // Difficulty Cards
-                        VStack(spacing: DesignTokens.spacing.lg) {
-                            DifficultyCard(
-                                level: 1,
-                                title: L10n.Difficulty.easy,
-                                iconColor: DesignTokens.color.difficultyEasy,
-                                levelSummary: DifficultyBucket.easy.levelSummary,
-                                description: DifficultyBucket.easy.description,
-                                exampleWords: DifficultyBucket.easy.exampleWords,
-                                isSelected: selectedDifficulty == 1,
-                                onTap: { selectedDifficulty = 1 }
-                            )
-
-                            DifficultyCard(
-                                level: 2,
-                                title: L10n.Difficulty.medium,
-                                iconColor: DesignTokens.color.difficultyMedium,
-                                levelSummary: DifficultyBucket.medium.levelSummary,
-                                description: DifficultyBucket.medium.description,
-                                exampleWords: DifficultyBucket.medium.exampleWords,
-                                isSelected: selectedDifficulty == 2,
-                                onTap: { selectedDifficulty = 2 }
-                            )
-
-                            DifficultyCard(
-                                level: 3,
-                                title: L10n.Difficulty.hard,
-                                iconColor: DesignTokens.color.difficultyHard,
-                                levelSummary: DifficultyBucket.hard.levelSummary,
-                                description: DifficultyBucket.hard.description,
-                                exampleWords: DifficultyBucket.hard.exampleWords,
-                                isSelected: selectedDifficulty == 3,
-                                onTap: { selectedDifficulty = 3 }
-                            )
-                        }
-                        .padding(.horizontal, DesignTokens.spacing.lg2)
-
-                        // Mixed difficulty toggle
-                        Toggle(isOn: $allowMixed) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(L10n.Difficulty.mixAllLevels)
-                                    .font(DesignTokens.typography.callout(weight: .semibold))
-                                    .foregroundStyle(DesignTokens.color.textPrimary)
-
-                                Text(L10n.Difficulty.mixAllLevelsDesc)
-                                    .font(DesignTokens.typography.caption(weight: .medium))
-                                    .foregroundStyle(DesignTokens.color.textLight)
-                            }
-                        }
-                        .toggleStyle(SwitchToggleStyle(tint: DesignTokens.color.info))
-                        .padding(.horizontal, DesignTokens.spacing.xl)
-                        .padding(.vertical, DesignTokens.spacing.lg2)
-                        .background(
-                            RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg)
-                                .fill(DesignTokens.color.sectionBackground)
-                                .designSystemShadow(DesignTokens.shadow.light)
-                        )
-                        .padding(.horizontal, DesignTokens.spacing.lg2)
-                    }
-                    .padding(.bottom, 100)
-                }
-
-                // Save button
-                VStack(spacing: 0) {
-                    Divider()
-
-                    Button(action: {
-                        saveDifficultyPreference()
-                        onDismiss()
-                    }) {
-                        HStack(spacing: 10) {
-                            Text(L10n.Common.save)
-                                .font(DesignTokens.typography.headline(weight: .bold))
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, DesignTokens.spacing.lg)
-                        .background(
-                            LinearGradient(
-                                colors: [
-                                    selectedDifficulty != nil ? DesignTokens.color.info : DesignTokens.color.textMuted.opacity(0.5),
-                                    selectedDifficulty != nil ? DesignTokens.color.primary : DesignTokens.color.textMuted.opacity(0.4)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous))
-                            .shadow(color: selectedDifficulty != nil ? DesignTokens.color.primary.opacity(0.3) : Color.clear, radius: 12, x: 0, y: 6)
-                        )
-                    }
-                    .disabled(selectedDifficulty == nil)
-                    .padding(.horizontal, DesignTokens.spacing.lg2)
-                    .padding(.vertical, DesignTokens.spacing.lg)
-                }
-                .background(DesignTokens.color.backgroundLight)
-            }
-            .background(
-                LinearGradient(
-                    colors: [
-                        DesignTokens.color.backgroundLight,
-                        DesignTokens.color.backgroundMedium
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-            )
-            .navigationTitle(L10n.Settings.difficultyLevel)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(L10n.Common.cancel) {
-                        onDismiss()
-                    }
-                    .font(DesignTokens.typography.callout(weight: .semibold))
-                    .foregroundStyle(DesignTokens.color.primary)
-                }
-            }
-        }
-        .onAppear {
-            selectedDifficulty = currentProgress.preferredDifficultyLevel
-            allowMixed = currentProgress.allowMixedDifficulty
-        }
-    }
-
-    private func saveDifficultyPreference() {
-        currentProgress.preferredDifficultyLevel = selectedDifficulty
-        currentProgress.allowMixedDifficulty = allowMixed
-
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error saving difficulty preference: \(error)")
-        }
     }
 }

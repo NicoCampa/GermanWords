@@ -49,7 +49,7 @@ class FrequencyLoader:
         if not p.exists():
             raise FileNotFoundError(
                 f"Frequency file not found: {self.path}\n"
-                f"Download it with: python dict_index.py --download"
+                f"Download it with: python tooling/pipeline/dict_index.py --download"
             )
 
         rank = 0

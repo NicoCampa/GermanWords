@@ -9,12 +9,12 @@ Pipeline:
   4. Export to iOS JSON format
 
 Usage:
-    python hybrid_generator.py --count 10        # test with 10 words
-    python hybrid_generator.py --count 10155     # all words
-    python hybrid_generator.py --count 50 --pos noun,verb
+    python tooling/pipeline/hybrid_generator.py --count 10        # test with 10 words
+    python tooling/pipeline/hybrid_generator.py --count 10155     # all words
+    python tooling/pipeline/hybrid_generator.py --count 50 --pos noun,verb
 
 Prerequisites:
-    1. Build dictionary index: python dict_index.py --download --build --verify
+    1. Build dictionary index: python tooling/pipeline/dict_index.py --download --build --verify
     2. Set GEMINI_API_KEY env var or pass --api-key
 """
 

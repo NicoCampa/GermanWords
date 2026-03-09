@@ -7,9 +7,9 @@ extracting grammar data (gender, article, plural, forms, senses)
 into a fast SQLite lookup database.
 
 Usage:
-    python dict_index.py [--input FILE] [--output FILE] [--download]
+    python tooling/pipeline/dict_index.py [--input FILE] [--output FILE] [--download]
 
-The resulting SQLite DB is used by hybrid_generator.py for authoritative
+The resulting SQLite DB is used by tooling/pipeline/hybrid_generator.py for authoritative
 grammar data, replacing LLM-generated grammar.
 """
 
@@ -326,7 +326,7 @@ class DictIndex:
         if not Path(db_path).exists():
             raise FileNotFoundError(
                 f"Dictionary index not found at {db_path}. "
-                f"Run: python dict_index.py --build"
+                f"Run: python tooling/pipeline/dict_index.py --build"
             )
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row

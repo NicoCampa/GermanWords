@@ -37,9 +37,20 @@ struct MainAppView: View {
         startupConfigured = true
 
         let appState = currentAppState
+        var didUpdateAppState = false
 
         if appState.targetLanguageCode != TargetLanguage.english.rawValue {
             appState.targetLanguage = .english
+            didUpdateAppState = true
+        }
+
+        let recalculatedLevel = appState.calculateLevel()
+        if appState.currentLevel != recalculatedLevel {
+            appState.currentLevel = recalculatedLevel
+            didUpdateAppState = true
+        }
+
+        if didUpdateAppState {
             try? modelContext.save()
         }
         AppLanguage.activeTargetLanguage = .english
@@ -99,7 +110,7 @@ struct aWordaDayApp: App {
     }
 
     private static func migrateIfNeeded() {
-        let currentSchemaVersion = 4
+        let currentSchemaVersion = 5
         let key = "wordSchemaVersion"
         let stored = UserDefaults.standard.integer(forKey: key)
         if stored < currentSchemaVersion {

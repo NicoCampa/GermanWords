@@ -2,12 +2,21 @@ import SwiftUI
 
 struct HomeWordCardView<WordType: WordDisplayable>: View {
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isShowingExamplesSheet = false
+    @State private var favoriteBurstVisible = false
+    @State private var favoriteBurstScale: CGFloat = 0.55
+    @State private var favoriteBurstOpacity = 0.0
+    @State private var favoriteBurstOffset: CGFloat = 0
+    @State private var favoriteRingScale: CGFloat = 0.78
+    @State private var favoriteRingOpacity = 0.0
 
     let word: WordType
     @Binding var selectedPage: WordCardPageKind
     @ObservedObject var speechSynthesizer: SpeechSynthesizerManager
+    let isFavorite: Bool
     let isPronunciationActive: Bool
     let onPronounce: () -> Void
+    let onToggleFavorite: () -> Void
 
     private var pages: [WordCardPage] { wordCardPages(for: word) }
     private var pageKinds: [WordCardPageKind] { pages.map(\.kind) }
@@ -56,14 +65,75 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(DesignTokens.color.surfaceStroke, lineWidth: 1)
+                        .stroke(
+                            isFavorite ? DesignTokens.color.difficultyHard : DesignTokens.color.surfaceStroke,
+                            lineWidth: isFavorite ? 2 : 1
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(
+                            DesignTokens.color.difficultyHard.opacity(favoriteRingOpacity),
+                            lineWidth: 5
+                        )
+                        .scaleEffect(favoriteRingScale)
                 )
                 .shadow(color: DesignTokens.color.panelShadow, radius: 20, x: 0, y: 12)
         )
+        .overlay(alignment: .center) {
+            if favoriteBurstVisible {
+                favoriteConfirmationOverlay
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .onTapGesture(count: 2) {
+            handleFavoriteToggle()
+        }
+        .sheet(isPresented: $isShowingExamplesSheet) {
+            allExamplesSheet
+        }
         .onAppear(perform: sanitizeSelectedPage)
         .onChange(of: pageKinds) { _, _ in
             sanitizeSelectedPage()
         }
+        .onChange(of: word.id) { _, _ in
+            isShowingExamplesSheet = false
+        }
+        .animation(.spring(response: 0.24, dampingFraction: 0.84), value: isFavorite)
+    }
+
+    private var favoriteConfirmationOverlay: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(Color.white)
+                .shadow(color: DesignTokens.color.difficultyHard.opacity(0.22), radius: 8, x: 0, y: 4)
+
+            Text("Favorite")
+                .font(DesignTokens.typography.callout(weight: .bold))
+                .foregroundStyle(Color.white)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            DesignTokens.color.difficultyHard,
+                            DesignTokens.color.warning
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: DesignTokens.color.difficultyHard.opacity(0.28), radius: 12, x: 0, y: 4)
+        )
+        .scaleEffect(favoriteBurstScale)
+        .opacity(favoriteBurstOpacity)
+        .offset(y: favoriteBurstOffset)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private var heroSection: some View {
@@ -254,15 +324,37 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
     }
 
     private var examplesPage: some View {
-        let visiblePairs = Array(word.localizedExamplePairs.prefix(3))
-        let highlightColor = wordCardGenderColor(for: word) ?? DesignTokens.color.skyBlue
+        let visiblePairs = Array(word.localizedExamplePairs.prefix(2))
+        let hiddenExampleCount = max(word.localizedExamplePairs.count - visiblePairs.count, 0)
 
-        return ScrollView(.vertical, showsIndicators: false) {
-            exampleRows(for: visiblePairs, highlightColor: highlightColor)
+        return VStack(alignment: .leading, spacing: 12) {
+            exampleRows(for: visiblePairs, highlightColor: exampleHighlightColor)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 2)
+
+            if hiddenExampleCount > 0 {
+                Button {
+                    isShowingExamplesSheet = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+
+                        Text(L10n.Chat.chipMoreExamples)
+                            .font(DesignTokens.typography.callout(weight: .semibold))
+                    }
+                    .foregroundStyle(DesignTokens.color.skyBlue)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(DesignTokens.color.skyBlue.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the remaining example sentences")
+            }
         }
-        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
     }
 
     private func exampleRows(for pairs: [(String, String)], highlightColor: Color) -> some View {
@@ -273,7 +365,7 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
                     translation: pair.1,
                     languageCode: word.pronunciationCode,
                     speechSynthesizer: speechSynthesizer,
-                    highlightedWord: word.word,
+                    highlightedWord: word.displayWord,
                     highlightColor: highlightColor
                 )
             }
@@ -284,7 +376,7 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
         let text = word.localizedCuriosityFacts?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return ScrollView(.vertical, showsIndicators: false) {
             Text(text)
-                .font(DesignTokens.typography.caption(weight: .medium))
+                .font(DesignTokens.typography.callout(weight: .medium))
                 .foregroundStyle(DesignTokens.color.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -416,6 +508,34 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var exampleHighlightColor: Color {
+        wordCardGenderColor(for: word) ?? DesignTokens.color.skyBlue
+    }
+
+    private var allExamplesSheet: some View {
+        NavigationStack {
+            ScrollView {
+                exampleRows(for: word.localizedExamplePairs, highlightColor: exampleHighlightColor)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 20)
+            }
+            .background(DesignTokens.color.backgroundLight.ignoresSafeArea())
+            .navigationTitle(L10n.Common.examples)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(L10n.Common.done) {
+                        isShowingExamplesSheet = false
+                    }
+                    .font(DesignTokens.typography.callout(weight: .semibold))
+                    .foregroundStyle(DesignTokens.color.primary)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
     private func inlineChip(text: String, color: Color) -> some View {
         Text(text)
             .font(DesignTokens.typography.footnote(weight: .bold))
@@ -437,6 +557,49 @@ struct HomeWordCardView<WordType: WordDisplayable>: View {
         guard pageKinds.contains(selectedPage) else {
             selectedPage = firstPage.kind
             return
+        }
+    }
+
+    private func handleFavoriteToggle() {
+        let willFavorite = !isFavorite
+        onToggleFavorite()
+
+        guard willFavorite else {
+            HapticFeedback.light()
+            return
+        }
+
+        triggerFavoriteAnimation()
+    }
+
+    private func triggerFavoriteAnimation() {
+        favoriteBurstVisible = true
+        favoriteBurstScale = 0.5
+        favoriteBurstOpacity = 1
+        favoriteBurstOffset = 0
+        favoriteRingScale = 0.78
+        favoriteRingOpacity = 0.32
+
+        HapticFeedback.success()
+
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
+            favoriteBurstOffset = -80
+            favoriteBurstScale = 1
+            favoriteBurstOpacity = 1
+            favoriteRingScale = 1.04
+        }
+
+        withAnimation(.easeOut(duration: 0.4).delay(0.6)) {
+            favoriteBurstOpacity = 0
+            favoriteRingOpacity = 0
+            favoriteRingScale = 1.12
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            favoriteBurstVisible = false
+            favoriteBurstScale = 0.5
+            favoriteBurstOffset = 0
+            favoriteRingScale = 0.78
         }
     }
 }

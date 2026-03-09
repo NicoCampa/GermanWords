@@ -24,6 +24,8 @@ struct ContentView: View {
     @State var achievementMessage = ""
     @State var showingXPAnimation = false
     @State var xpGained = 0
+    @State var xpAnimationToken = UUID()
+    @State var xpHideWorkItem: DispatchWorkItem?
     // Consolidated sheet state
     @State var activeSheet: HomeSheet?
     @State private var hasInitializedHomeState = false
@@ -99,10 +101,14 @@ struct ContentView: View {
                 word: word,
                 selectedPage: pageSelectionBinding(for: word),
                 speechSynthesizer: speechSynthesizer,
+                isFavorite: word.isFavorite,
                 isPronunciationActive: showingPronunciation && activeWord?.id == word.id,
                 onPronounce: {
                     focusWord(id: word.id, animated: false)
                     pronounceWord()
+                },
+                onToggleFavorite: {
+                    toggleFavorite(for: word.id)
                 }
             )
             .padding(.horizontal, 20)
@@ -159,15 +165,14 @@ struct ContentView: View {
                 HomeBackgroundView()
                 scrollableHome
             }
-            .overlay(alignment: .bottomTrailing) {
+            .overlay(alignment: .center) {
                 if showingXPAnimation {
                     XPPopupView(xpAmount: xpGained)
+                        .id(xpAnimationToken)
                         .transition(.asymmetric(
                             insertion: .scale.combined(with: .opacity),
                             removal: .opacity
                         ))
-                        .padding(.bottom, 70)
-                        .padding(.trailing, 16)
                 }
             }
             .toolbar {
@@ -307,7 +312,12 @@ struct ContentView: View {
         }
 
         selectedTab = .learn
-        viewModel.presentWord(id: wordID)
+        viewModel.presentWord(
+            id: wordID,
+            awardXPForConsumption: true,
+            onXPGained: { xp in triggerXPGainAnimation(amount: xp) },
+            onAchievement: { msg in showAchievementToast(msg) }
+        )
         refreshWordFeedFromViewModel()
         if let targetWord = wordFeed.first(where: { $0.id == wordID }) {
             resetPageState(for: targetWord)
@@ -431,6 +441,17 @@ struct ContentView: View {
         wordFeed.append(nextWord)
         ensurePageState(for: nextWord)
         canLoadMoreWords = viewModel.availableWordCount > 1
+    }
+
+    private func toggleFavorite(for wordID: String) {
+        guard let updatedWord = viewModel.toggleFavorite(for: wordID) else { return }
+
+        if let index = wordFeed.firstIndex(where: { $0.id == wordID }) {
+            wordFeed[index] = updatedWord
+            ensurePageState(for: updatedWord)
+        }
+
+        HapticFeedback.selection()
     }
 
     private func rebaseWordFeed(keepingVisibleIndex visibleIndex: Int) {

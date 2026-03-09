@@ -30,8 +30,6 @@ final class UserProgress {
     var dailyWordsSeenIds: [String]?
     var selectedWordySkinID: String?
     var unlockedWordySkinIDs: [String]?
-    var preferredDifficultyLevel: Int?
-    var allowMixedDifficulty: Bool?
     var wordOfTheDayId: String?
     var wordOfTheDayDate: Date?
     var targetLanguageCode: String?
@@ -68,58 +66,23 @@ final class UserProgress {
         self.dailyWordsSeenIds = []
         self.selectedWordySkinID = nil
         self.unlockedWordySkinIDs = nil
-        self.preferredDifficultyLevel = nil
-        self.allowMixedDifficulty = false
         self.wordOfTheDayId = nil
         self.wordOfTheDayDate = nil
     }
 
-    private static let levelThresholds: [Int] = [
-        0,      // Level 1
-        50,     // Level 2
-        120,    // Level 3
-        220,    // Level 4
-        350,    // Level 5
-        510,    // Level 6
-        700,    // Level 7
-        920,    // Level 8
-        1170,   // Level 9
-        1450,   // Level 10
-        1760,   // Level 11
-        2110,   // Level 12
-        2490,   // Level 13
-        2900,   // Level 14
-        3340,   // Level 15
-        3810,   // Level 16
-        4310,   // Level 17
-        4840,   // Level 18
-        5400,   // Level 19
-        5990,   // Level 20
-        6610,   // Level 21
-        7280,   // Level 22
-        7980,   // Level 23
-        8710,   // Level 24
-        9470,   // Level 25
-        10260,  // Level 26
-        11080,  // Level 27
-        11930,  // Level 28
-        12810,  // Level 29
-        13720   // Level 30
-    ]
-
     func calculateLevel() -> Int {
-        let index = Self.levelThresholds.lastIndex(where: { totalXP >= $0 }) ?? 0
-        return min(index + 1, 30)
+        let index = LevelProgression.levelThresholds.lastIndex(where: { totalXP >= $0 }) ?? 0
+        return min(index + 1, LevelProgression.maxLevel)
     }
 
     func xpForNextLevel() -> Int {
-        let nextLevel = min(calculateLevel() + 1, 30)
+        let nextLevel = min(calculateLevel() + 1, LevelProgression.maxLevel)
         return xpRequiredForLevel(nextLevel)
     }
 
     func xpRequiredForLevel(_ level: Int) -> Int {
-        let index = max(0, min(level - 1, Self.levelThresholds.count - 1))
-        return Self.levelThresholds[index]
+        let index = max(0, min(level - 1, LevelProgression.levelThresholds.count - 1))
+        return LevelProgression.levelThresholds[index]
     }
 
     /// Returns the new level if a level-up occurred, nil otherwise.
@@ -193,11 +156,11 @@ final class UserProgress {
 
         if let timeData = UserDefaults.standard.data(forKey: "daily_notification_time"),
            let time = try? JSONDecoder().decode(DateComponents.self, from: timeData) {
-            resetHour = time.hour ?? 9
-            resetMinute = time.minute ?? 0
+            resetHour = time.hour ?? NotificationDefaults.reminderHour
+            resetMinute = time.minute ?? NotificationDefaults.reminderMinute
         } else {
-            resetHour = 9
-            resetMinute = 0
+            resetHour = NotificationDefaults.reminderHour
+            resetMinute = NotificationDefaults.reminderMinute
         }
 
         var lastResetComponents = calendar.dateComponents([.year, .month, .day], from: today)

@@ -14,7 +14,7 @@ struct NotificationSettingsView: View {
     @Environment(\.modelContext) private var modelContext
     
     @State private var showingTimePicker = false
-    @State private var selectedHour = 9
+    @State private var selectedHour = NotificationDefaults.reminderHour
     @State private var selectedMinute = 0
     @State private var showingTestAlert = false
     
@@ -213,13 +213,13 @@ struct NotificationSettingsView: View {
     }
     
     private func loadCurrentTime() {
-        selectedHour = notificationManager.dailyNotificationTime.hour ?? 9
-        selectedMinute = notificationManager.dailyNotificationTime.minute ?? 0
+        selectedHour = notificationManager.dailyNotificationTime.hour ?? NotificationDefaults.reminderHour
+        selectedMinute = notificationManager.dailyNotificationTime.minute ?? NotificationDefaults.reminderMinute
     }
     
     private func formatTime() -> String {
-        let hour = notificationManager.dailyNotificationTime.hour ?? 9
-        let minute = notificationManager.dailyNotificationTime.minute ?? 0
+        let hour = notificationManager.dailyNotificationTime.hour ?? NotificationDefaults.reminderHour
+        let minute = notificationManager.dailyNotificationTime.minute ?? NotificationDefaults.reminderMinute
         
         let formatter = DateFormatter()
         formatter.timeStyle = .short

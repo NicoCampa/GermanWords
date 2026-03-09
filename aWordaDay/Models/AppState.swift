@@ -6,6 +6,41 @@
 import Foundation
 import SwiftData
 
+enum LevelProgression {
+    static let maxLevel = 50
+
+    private static let fallbackCatalogWordCount = 9_539
+    private static let completionXPPerWord = 25
+    private static let easingExponent = 2.0
+
+    private static let catalogWordCount: Int = {
+        let bundledCount = SQLiteCatalogStore.shared.totalWordCount(for: AppLanguage.sourceCode)
+        return bundledCount > 0 ? bundledCount : fallbackCatalogWordCount
+    }()
+
+    private static let completionXP: Int = max(catalogWordCount * completionXPPerWord, maxLevel - 1)
+
+    static let levelThresholds: [Int] = {
+        guard maxLevel > 1 else { return [0] }
+
+        var thresholds = [0]
+        thresholds.reserveCapacity(maxLevel)
+
+        for index in 1..<maxLevel {
+            if index == maxLevel - 1 {
+                thresholds.append(completionXP)
+                continue
+            }
+
+            let progress = Double(index) / Double(maxLevel - 1)
+            let rawThreshold = Int((Double(completionXP) * pow(progress, easingExponent)).rounded())
+            thresholds.append(max(rawThreshold, thresholds.last! + 1))
+        }
+
+        return thresholds
+    }()
+}
+
 @Model
 final class AppState {
     var currentStreak: Int
@@ -20,8 +55,6 @@ final class AppState {
     var dailyWordsSeenIDs: [String]
     var wordOfTheDayID: String?
     var wordOfTheDayDate: Date?
-    var preferredDifficultyLevel: Int?
-    var allowMixedDifficulty: Bool
     var targetLanguageCode: String
     var selectedLanguage: String
     var selectedWordySkinID: String?
@@ -41,8 +74,6 @@ final class AppState {
         dailyWordsSeenIDs = []
         wordOfTheDayID = nil
         wordOfTheDayDate = nil
-        preferredDifficultyLevel = nil
-        allowMixedDifficulty = false
         targetLanguageCode = TargetLanguage.english.rawValue
         selectedLanguage = AppLanguage.sourceCode
         selectedWordySkinID = nil
@@ -55,32 +86,34 @@ final class AppState {
         set { targetLanguageCode = newValue.rawValue }
     }
 
-    private static let levelThresholds: [Int] = [
-        0, 50, 120, 220, 350, 510, 700, 920, 1170, 1450,
-        1760, 2110, 2490, 2900, 3340, 3810, 4310, 4840, 5400, 5990,
-        6610, 7280, 7980, 8710, 9470, 10260, 11080, 11930, 12810, 13720
-    ]
+    var isAtMaxLevel: Bool {
+        currentLevel >= LevelProgression.maxLevel
+    }
 
     func calculateLevel() -> Int {
-        let index = Self.levelThresholds.lastIndex(where: { totalXP >= $0 }) ?? 0
-        return min(index + 1, 30)
+        let index = LevelProgression.levelThresholds.lastIndex(where: { totalXP >= $0 }) ?? 0
+        return min(index + 1, LevelProgression.maxLevel)
     }
 
     func xpForNextLevel() -> Int {
-        let nextLevel = min(calculateLevel() + 1, 30)
+        let nextLevel = min(calculateLevel() + 1, LevelProgression.maxLevel)
         return xpRequiredForLevel(nextLevel)
     }
 
     func xpRequiredForLevel(_ level: Int) -> Int {
-        let index = max(0, min(level - 1, Self.levelThresholds.count - 1))
-        return Self.levelThresholds[index]
+        let index = max(0, min(level - 1, LevelProgression.levelThresholds.count - 1))
+        return LevelProgression.levelThresholds[index]
+    }
+
+    func refreshLevelFromXP() {
+        currentLevel = calculateLevel()
     }
 
     @discardableResult
     func addXP(_ xp: Int) -> Int? {
         let oldLevel = currentLevel
         totalXP += xp
-        currentLevel = calculateLevel()
+        refreshLevelFromXP()
         return currentLevel > oldLevel ? currentLevel : nil
     }
 
@@ -99,11 +132,12 @@ final class AppState {
         }
     }
 
-    func recordWordShownToday(_ wordID: String, now: Date = Date()) {
+    @discardableResult
+    func recordWordShownToday(_ wordID: String, now: Date = Date()) -> Bool {
         resetDailyWordProgressIfNeeded(now: now)
-        if !dailyWordsSeenIDs.contains(wordID) {
-            dailyWordsSeenIDs.append(wordID)
-        }
+        guard !dailyWordsSeenIDs.contains(wordID) else { return false }
+        dailyWordsSeenIDs.append(wordID)
+        return true
     }
 
     @discardableResult
@@ -159,11 +193,11 @@ final class AppState {
         var resetComponents = calendar.dateComponents([.year, .month, .day], from: now)
         if let timeData = UserDefaults.standard.data(forKey: "daily_notification_time"),
            let time = try? JSONDecoder().decode(DateComponents.self, from: timeData) {
-            resetComponents.hour = time.hour ?? 9
-            resetComponents.minute = time.minute ?? 0
+            resetComponents.hour = time.hour ?? NotificationDefaults.reminderHour
+            resetComponents.minute = time.minute ?? NotificationDefaults.reminderMinute
         } else {
-            resetComponents.hour = 9
-            resetComponents.minute = 0
+            resetComponents.hour = NotificationDefaults.reminderHour
+            resetComponents.minute = NotificationDefaults.reminderMinute
         }
 
         let todayReset = calendar.date(from: resetComponents) ?? now
