@@ -91,7 +91,7 @@ extension ContentView {
             // MARK: Examples (always show max 2)
             if !word.localizedExamplePairs.isEmpty {
                 let highlightColor = genderColor(for: word) ?? DesignTokens.color.skyBlue
-                let highlightWord = word.word
+                let highlightWord = word.displayWord
                 let visiblePairs = Array(word.localizedExamplePairs.prefix(3))
 
                 compactExamplesCard(

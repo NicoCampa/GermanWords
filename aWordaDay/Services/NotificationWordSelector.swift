@@ -26,18 +26,9 @@ final class NotificationWordSelector {
     ) -> CatalogWordDetail? {
         let states = userStateStore.loadWordStates(in: modelContext)
 
-        if let dueState = states
-            .filter({ !excludedWordIDs.contains($0.wordID) })
-            .filter({ $0.isDueForReview })
-            .sorted(by: { ($0.srsDueDate ?? .distantFuture) < ($1.srsDueDate ?? .distantFuture) })
-            .first {
-            return catalogStore.fetchWord(id: dueState.wordID)
-        }
-
         let stateIDs = Set(states.map(\.wordID))
         let unseenCandidates = catalogStore.fetchCandidateWords(
             language: language,
-            difficultyPolicy: CatalogDifficultyPolicy(preferredDifficulty: nil, allowMixedDifficulty: true),
             limit: 0
         )
         .filter { !stateIDs.contains($0.id) && !excludedWordIDs.contains($0.id) }

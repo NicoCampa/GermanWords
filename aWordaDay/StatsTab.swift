@@ -67,11 +67,12 @@ struct StatsTab: View {
     }
 
     private var levelSection: some View {
+        let isAtMaxLevel = summary.appState.isAtMaxLevel
         let nextLevelXP = summary.appState.xpForNextLevel()
         let currentLevelXP = summary.appState.xpRequiredForLevel(summary.appState.currentLevel)
         let xpIntoCurrentLevel = max(summary.appState.totalXP - currentLevelXP, 0)
         let xpNeededForNext = max(nextLevelXP - currentLevelXP, 1)
-        let fraction = Double(xpIntoCurrentLevel) / Double(xpNeededForNext)
+        let fraction = isAtMaxLevel ? 1.0 : Double(xpIntoCurrentLevel) / Double(xpNeededForNext)
 
         return VStack(spacing: DesignTokens.spacing.lg) {
             sectionLabel(L10n.Stats.level)
@@ -99,7 +100,11 @@ struct StatsTab: View {
                     ProgressView(value: min(max(fraction, 0), 1))
                         .progressViewStyle(LinearProgressViewStyle(tint: DesignTokens.color.progressTint))
 
-                    Text(L10n.Stats.xpToLevel(xpIntoCurrentLevel, xpNeededForNext, summary.appState.currentLevel + 1))
+                    Text(
+                        isAtMaxLevel
+                            ? L10n.Stats.maxLevelReached(summary.appState.currentLevel)
+                            : L10n.Stats.xpToLevel(xpIntoCurrentLevel, xpNeededForNext, summary.appState.currentLevel + 1)
+                    )
                         .font(DesignTokens.typography.caption())
                         .foregroundStyle(DesignTokens.color.textLight)
                 }

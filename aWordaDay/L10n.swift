@@ -65,7 +65,7 @@ enum L10n {
         static var noWordsYet: String { zh ? "还没有单词" : "No words yet" }
         static var noWordsDesc: String { zh ? "在设置中添加词汇或导入词库以开始学习。" : "Add some vocabulary or import a pack from Settings to start learning." }
         static var openSettings: String { zh ? "打开设置" : "Open Settings" }
-        static var askWortyAbout: String { zh ? "问Worty关于这个词" : "Ask Worty about this word" }
+        static var askWortyAbout: String { zh ? "问Wolke关于这个词" : "Ask Wolke about this word" }
         static var listenToPronunciation: String { zh ? "听发音" : "Listen to pronunciation" }
     }
 
@@ -144,6 +144,9 @@ enum L10n {
         static func xpToLevel(_ current: Int, _ needed: Int, _ next: Int) -> String {
             zh ? "\(current) / \(needed) 经验值升至等级 \(next)" : "\(current) / \(needed) XP to level \(next)"
         }
+        static func maxLevelReached(_ level: Int) -> String {
+            zh ? "已达到最高等级 \(level)" : "Max level \(level) reached"
+        }
         static func discoveredOf(_ n: Int, _ total: Int) -> String {
             zh ? "已发现 \(n) / \(total) 个单词" : "\(n) of \(total) words discovered"
         }
@@ -153,10 +156,10 @@ enum L10n {
 
     // MARK: - Chat
     enum Chat {
-        static var chatWithWorty: String { zh ? "与Worty聊天" : "Chat with Worty" }
-        static var emptyTitle: String { zh ? "你好！我是Worty" : "Hallo! I'm Worty" }
+        static var chatWithWorty: String { zh ? "与Wolke聊天" : "Chat with Wolke" }
+        static var emptyTitle: String { zh ? "你好！我是Wolke" : "Hallo! I'm Wolke" }
         static var emptySubtitle: String { zh ? "问我任何关于德语单词、语法或发音的问题！" : "Ask me anything about German words, grammar, or pronunciation!" }
-        static var inputPlaceholder: String { zh ? "问Worty…" : "Ask Worty..." }
+        static var inputPlaceholder: String { zh ? "问Wolke…" : "Ask Wolke..." }
         // Generic suggestion chips (no word context)
         static var chipTeachNewWord: String { zh ? "教我一个新单词" : "Teach me a new word" }
         static var chipExplainCases: String { zh ? "解释德语格" : "Explain German cases" }
@@ -244,24 +247,25 @@ enum L10n {
 
     // MARK: - Onboarding
     enum Onboarding {
-        static var welcomeToWorty: String { zh ? "欢迎来到Worty！" : "Welcome to Worty!" }
-        static var pickLevel: String { zh ? "选择你的级别开始" : "Pick your level to get started" }
-        static var explanationsIn: String { zh ? "解释语言：" : "Explanations in:" }
-        static var whatYoullGet: String { zh ? "你将获得" : "What You'll Get" }
-        static var everythingToMaster: String { zh ? "掌握德语所需的一切" : "Everything you need to master German" }
-        static var dailyWords: String { zh ? "每日单词" : "Daily Words" }
-        static var dailyWordsDesc: String { zh ? "每天学习精选单词，结合间隔重复" : "Learn curated words every day with spaced repetition" }
-        static var smartReview: String { zh ? "智能复习" : "Smart Review" }
-        static var smartReviewDesc: String { zh ? "根据你的学习节奏循环安排新词和复习词" : "Rotate new and due words based on your learning pace" }
-        static var browseLibrary: String { zh ? "浏览词库" : "Browse Library" }
-        static var browseLibraryDesc: String { zh ? "快速搜索、筛选和重看你已经学过的词" : "Search, filter, and revisit the words you've already seen" }
-        static var funGames: String { zh ? "趣味游戏" : "Fun Games" }
-        static var funGamesDesc: String { zh ? "通过冠词游戏、单词冒险等练习" : "Practice with Der/Die/Das, Word Quest, and more" }
-        static var aiTutor: String { zh ? "AI导师" : "AI Tutor" }
-        static var aiTutorDesc: String { zh ? "与Worty聊天，询问任何单词的问题" : "Chat with Worty to ask questions about any word" }
-        static var youreAllSet: String { zh ? "一切就绪！" : "You're All Set!" }
-        static var letsStart: String { zh ? "开始你的学习之旅" : "Let's start your learning journey" }
-        static var getStarted: String { zh ? "开始" : "Get Started" }
+        static var welcomeTitle: String { zh ? "欢迎来到 Wolke" : "Welcome to Wolke" }
+        static var welcomeSubtitle: String { zh ? "一次学习一个德语单词，配有清晰翻译、例句和注释。" : "Learn German one word at a time with clear translations, examples, and notes." }
+        static var examplesAndNotes: String { zh ? "例句与注释" : "Examples and notes" }
+        static var examplesAndNotesDesc: String { zh ? "每张单词卡都会展示这个词在真实语境中的用法。" : "Each word card helps you see how a word is actually used." }
+        static var doubleTapToSave: String { zh ? "双击即可收藏" : "Double-tap to save" }
+        static var doubleTapToSaveDesc: String { zh ? "双击任意单词卡即可收藏，红心动画会立即确认。" : "Double-tap any word card to favorite it. A floating red heart confirms it right away." }
+        static var howItWorks: String { zh ? "Wolke 如何工作" : "How Wolke works" }
+        static var howItWorksSubtitle: String { zh ? "保持简单，按自己的节奏每天回来一点点。" : "Keep it simple and come back at your own pace." }
+        static var oneWordAtATime: String { zh ? "一次一个单词" : "One word at a time" }
+        static var oneWordAtATimeDesc: String { zh ? "阅读单词、翻译、例句和注释，然后在准备好时继续。" : "Read the word, translation, examples, and notes, then move on when you're ready." }
+        static var saveFavorites: String { zh ? "收藏重要词汇" : "Save favorites" }
+        static var saveFavoritesDesc: String { zh ? "双击任意单词卡，保留你想重新查看的词。" : "Double-tap any card to keep the words you want to revisit." }
+        static var browseYourLibrary: String { zh ? "浏览词库" : "Browse your library" }
+        static var browseYourLibraryDesc: String { zh ? "搜索词典，筛选收藏，并随时重新打开任何单词。" : "Search the dictionary, filter favorites, and reopen any word whenever you want." }
+        static var optionalDailyReminder: String { zh ? "可选每日提醒" : "Optional daily reminder" }
+        static var optionalDailyReminderDesc: String { zh ? "开启提醒后，Wolke 会在你选择的时间提醒你回来。" : "Turn on reminders and Wolke will bring you back at the time you choose." }
+        static var readyTitle: String { zh ? "准备开始了吗？" : "Ready to start?" }
+        static var readySubtitle: String { zh ? "提醒时间和语言都可以稍后在设置中修改。" : "You can change reminders and language later in Settings." }
+        static var startLearning: String { zh ? "开始学习" : "Start Learning" }
     }
 
     // MARK: - Progress
@@ -302,6 +306,9 @@ enum L10n {
                 ? (zh ? "你已经可以升级了！继续学习以进步。" : "You're eligible to level up! Keep learning to advance.")
                 : (zh ? "还需 \(remaining) 经验值升至等级 \(next)。" : "\(remaining) XP to reach level \(next).")
         }
+        static func maxLevelSubtitle(_ level: Int) -> String {
+            zh ? "你已完成当前词库的等级进度，达到等级 \(level)。" : "You've completed the current catalog progression and reached level \(level)."
+        }
         static var learningMilestones: String { zh ? "学习里程碑" : "Learning milestones" }
         static var wordsDiscovered: String { zh ? "已发现单词" : "Words discovered" }
         static var fullyLearned: String { zh ? "完全学会" : "Fully learned" }
@@ -319,9 +326,13 @@ enum L10n {
         static var currentLevel: String { zh ? "当前等级" : "Current level" }
         static var xpEarned: String { zh ? "已获经验值" : "XP earned" }
         static var nextLevelTarget: String { zh ? "下一等级目标" : "Next level target" }
+        static var maxLevel: String { zh ? "最高等级" : "Max level" }
         static var xpProgress: String { zh ? "经验值进度" : "XP progress" }
         static func xpThisLevel(_ current: Int, _ needed: Int) -> String {
             zh ? "本等级 \(current) / \(needed) 经验值" : "\(current) / \(needed) XP this level"
+        }
+        static func maxLevelProgress(_ totalXP: Int) -> String {
+            zh ? "已累计 \(totalXP) 经验值并完成当前等级曲线" : "\(totalXP) XP collected across the full progression"
         }
         static func practiceBoost(_ word: String) -> String {
             zh ? "再次练习 \"\(word)\" 可以获得更多经验值。" : "Practicing \"\(word)\" again boosts your XP gains."

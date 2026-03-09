@@ -15,9 +15,7 @@ protocol LearningManagerProtocol {
         from words: [CatalogWord],
         statesByID: [String: UserWordStateSnapshot],
         language: String,
-        lastWordID: String?,
-        preferredDifficulty: Int?,
-        allowMixed: Bool
+        lastWordID: String?
     ) -> CatalogWord?
     func getNewWordsToLearn(
         from words: [CatalogWord],

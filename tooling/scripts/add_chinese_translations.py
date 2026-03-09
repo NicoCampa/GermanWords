@@ -6,9 +6,9 @@ Reads wordy_words_export_german.json, calls OpenAI to translate English fields
 into Simplified Chinese, and writes the enriched JSON back with new *Zh fields.
 
 Usage:
-    python scripts/add_chinese_translations.py
-    python scripts/add_chinese_translations.py --dry-run   # preview without writing
-    python scripts/add_chinese_translations.py --resume     # skip words that already have Zh fields
+    python tooling/scripts/add_chinese_translations.py
+    python tooling/scripts/add_chinese_translations.py --dry-run   # preview without writing
+    python tooling/scripts/add_chinese_translations.py --resume    # skip words that already have Zh fields
 
 Prerequisites:
     - Set OPENAI_API_KEY environment variable
@@ -26,7 +26,8 @@ from typing import Dict, List, Optional
 from openai import OpenAI
 
 # Path to the word export file
-WORD_FILE = Path(__file__).parent.parent / "aWordaDay" / "wordy_words_export_german.json"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+WORD_FILE = REPO_ROOT / "aWordaDay" / "wordy_words_export_german.json"
 BACKUP_FILE = WORD_FILE.with_suffix(".backup.json")
 
 # Rate limiting

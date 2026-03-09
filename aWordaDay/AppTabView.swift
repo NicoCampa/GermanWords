@@ -14,6 +14,13 @@ enum AppTab: Hashable {
     case settings
 }
 
+private enum PresentedAppSheet: String, Identifiable {
+    case browse
+    case settings
+
+    var id: String { rawValue }
+}
+
 struct AppTabView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var appStates: [AppState]
@@ -27,14 +34,16 @@ struct AppTabView: View {
     var body: some View {
         ContentView(selectedTab: $selectedTab)
         .tint(DesignTokens.color.primary)
-        .sheet(isPresented: browsePresentationBinding, onDismiss: dismissPresentedSection) {
-            BrowseWordsView(showsOnlyViewedWords: true)
-        }
-        .sheet(isPresented: settingsPresentationBinding, onDismiss: dismissPresentedSection) {
-            SettingsView(
-                currentProgress: currentProgress,
-                modelContext: modelContext
-            )
+        .sheet(item: presentedSheetBinding, onDismiss: dismissPresentedSection) { sheet in
+            switch sheet {
+            case .browse:
+                BrowseWordsView(showsOnlyViewedWords: true)
+            case .settings:
+                SettingsView(
+                    currentProgress: currentProgress,
+                    modelContext: modelContext
+                )
+            }
         }
         .onAppear(perform: routePendingNotificationToLearnIfNeeded)
         .onChange(of: notificationManager.pendingNotificationWordID) { _, _ in
@@ -42,20 +51,27 @@ struct AppTabView: View {
         }
     }
 
-    private var browsePresentationBinding: Binding<Bool> {
+    private var presentedSheetBinding: Binding<PresentedAppSheet?> {
         Binding(
-            get: { selectedTab == .browse },
-            set: { isPresented in
-                selectedTab = isPresented ? .browse : .learn
-            }
-        )
-    }
-
-    private var settingsPresentationBinding: Binding<Bool> {
-        Binding(
-            get: { selectedTab == .settings },
-            set: { isPresented in
-                selectedTab = isPresented ? .settings : .learn
+            get: {
+                switch selectedTab {
+                case .learn:
+                    nil
+                case .browse:
+                    .browse
+                case .settings:
+                    .settings
+                }
+            },
+            set: { sheet in
+                switch sheet {
+                case .browse:
+                    selectedTab = .browse
+                case .settings:
+                    selectedTab = .settings
+                case nil:
+                    selectedTab = .learn
+                }
             }
         )
     }

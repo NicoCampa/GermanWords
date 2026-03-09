@@ -19,8 +19,6 @@ final class HomeViewModel {
     private var cachedAppState: AppState?
     private var lastAnalyticsSnapshot: AnalyticsSnapshot?
     private var hasLoadedNotificationPermission = false
-    private var lastLoadedDifficulty: Int?
-    private var lastLoadedAllowMixed = false
     private var lastLoadedLanguage = AppLanguage.sourceCode
 
     private let learnService: LearnService
@@ -76,21 +74,19 @@ final class HomeViewModel {
             return
         }
 
-        let totalXPEarned = todaysWord.map {
-            completeReview(
-                for: $0,
-                modelContext: modelContext,
-                onAchievement: onAchievement
-            )
-        } ?? 0
-
         guard let nextWord = selectNextWord(after: todaysWord?.id) else {
             todaysWord = nil
             persistChangesIfNeeded(modelContext: modelContext)
             return
         }
 
-        presentResolvedWord(id: nextWord.id, modelContext: modelContext, markAsShown: true)
+        let totalXPEarned = presentResolvedWord(
+            id: nextWord.id,
+            modelContext: modelContext,
+            markAsShown: true,
+            awardXPForConsumption: true,
+            onAchievement: onAchievement
+        )
 
         if totalXPEarned > 0 {
             onXPGained(totalXPEarned)
@@ -107,6 +103,22 @@ final class HomeViewModel {
         return learnService.makePayload(wordID: nextWord.id, statesByID: stateByID)
     }
 
+    @discardableResult
+    func toggleFavorite(for wordID: String) -> LearnWordPayload? {
+        guard let modelContext else { return nil }
+
+        let snapshot = userStateStore.toggleFavorite(in: modelContext, wordID: wordID)
+        stateByID[wordID] = snapshot
+
+        let updatedPayload = learnService.makePayload(wordID: wordID, statesByID: stateByID)
+        if todaysWord?.id == wordID {
+            todaysWord = updatedPayload
+        }
+
+        persistChangesIfNeeded(modelContext: modelContext)
+        return updatedPayload
+    }
+
     func advanceToWord(
         id nextWordID: String,
         from currentWordID: String?,
@@ -115,17 +127,13 @@ final class HomeViewModel {
     ) {
         guard let modelContext else { return }
 
-        let totalXPEarned = currentWordID
-            .flatMap { learnService.makePayload(wordID: $0, statesByID: stateByID) }
-            .map {
-                completeReview(
-                    for: $0,
-                    modelContext: modelContext,
-                    onAchievement: onAchievement
-                )
-            } ?? 0
-
-        presentResolvedWord(id: nextWordID, modelContext: modelContext, markAsShown: true)
+        let totalXPEarned = presentResolvedWord(
+            id: nextWordID,
+            modelContext: modelContext,
+            markAsShown: true,
+            awardXPForConsumption: true,
+            onAchievement: onAchievement
+        )
 
         if totalXPEarned > 0 {
             onXPGained(totalXPEarned)
@@ -134,20 +142,27 @@ final class HomeViewModel {
         updateAnalyticsUserProperties()
     }
 
-    func presentWord(id wordID: String, markAsShown: Bool = true) {
+    func presentWord(
+        id wordID: String,
+        markAsShown: Bool = true,
+        awardXPForConsumption: Bool = false,
+        onXPGained: ((Int) -> Void)? = nil,
+        onAchievement: ((String) -> Void)? = nil
+    ) {
         guard let modelContext else { return }
         reloadUserStateSnapshots()
 
-        guard let payload = learnService.makePayload(wordID: wordID, statesByID: stateByID) else { return }
+        let totalXPEarned = presentResolvedWord(
+            id: wordID,
+            modelContext: modelContext,
+            markAsShown: markAsShown,
+            awardXPForConsumption: awardXPForConsumption,
+            onAchievement: onAchievement ?? { _ in }
+        )
 
-        if markAsShown {
-            currentProgress.wordOfTheDayID = wordID
-            currentProgress.wordOfTheDayDate = Date()
-            currentProgress.recordWordShownToday(wordID)
+        if totalXPEarned > 0 {
+            onXPGained?(totalXPEarned)
         }
-
-        todaysWord = payload
-        persistChangesIfNeeded(modelContext: modelContext)
         updateAnalyticsUserProperties()
     }
 
@@ -173,7 +188,7 @@ final class HomeViewModel {
         }
 
         if let scheduledWordID = notificationManager.scheduledNotificationWordID(for: Date()) {
-            presentResolvedWord(id: scheduledWordID, modelContext: modelContext, markAsShown: true)
+            _ = presentResolvedWord(id: scheduledWordID, modelContext: modelContext, markAsShown: true)
             updateAnalyticsUserProperties()
             return
         }
@@ -184,7 +199,7 @@ final class HomeViewModel {
             return
         }
 
-        presentResolvedWord(id: nextWord.id, modelContext: modelContext, markAsShown: true)
+        _ = presentResolvedWord(id: nextWord.id, modelContext: modelContext, markAsShown: true)
         updateAnalyticsUserProperties()
     }
 
@@ -193,8 +208,6 @@ final class HomeViewModel {
         let pool = candidatePool.filter { !blockedIDs.contains($0.id) }
         let context = LearnSelectionContext(
             currentWordID: currentWordID,
-            preferredDifficulty: currentProgress.preferredDifficultyLevel,
-            allowMixedDifficulty: currentProgress.allowMixedDifficulty,
             recentWordIDs: [],
             todaySeenIDs: currentProgress.dailyWordsSeenIDs
         )
@@ -212,42 +225,31 @@ final class HomeViewModel {
 
     @discardableResult
     private func reloadCandidatePoolIfNeeded(force: Bool) -> Bool {
-        let preferredDifficulty = currentProgress.preferredDifficultyLevel
-        let allowMixed = currentProgress.allowMixedDifficulty
         let language = AppLanguage.sourceCode
         let needsReload = force
-            || preferredDifficulty != lastLoadedDifficulty
-            || allowMixed != lastLoadedAllowMixed
             || language != lastLoadedLanguage
 
         guard needsReload else { return false }
 
-        candidatePool = learnService.loadCandidatePool(
-            language: language,
-            preferredDifficulty: preferredDifficulty,
-            allowMixedDifficulty: allowMixed
-        )
+        candidatePool = learnService.loadCandidatePool(language: language)
         availableWordCount = candidatePool.count
-        lastLoadedDifficulty = preferredDifficulty
-        lastLoadedAllowMixed = allowMixed
         lastLoadedLanguage = language
         return true
     }
 
-    private func completeReview(
-        for current: LearnWordPayload,
+    private func consumeWord(
+        _ current: LearnWordPayload,
         modelContext: ModelContext,
         onAchievement: (String) -> Void
     ) -> Int {
         var totalXPEarned = 0
 
-        let reviewResult = userStateStore.saveWordReview(
+        let viewResult = userStateStore.saveWordView(
             in: modelContext,
             wordID: current.id,
-            quality: 3,
             date: Date()
         )
-        stateByID[current.id] = reviewResult.snapshot
+        stateByID[current.id] = viewResult.snapshot
 
         totalXPEarned += 5
         if let newLevel = currentProgress.addXP(5) {
@@ -264,7 +266,7 @@ final class HomeViewModel {
             }
         }
 
-        if reviewResult.becameLearned {
+        if viewResult.becameLearned {
             let masteryXP = max(current.difficultyLevel, 1) * 10
             totalXPEarned += masteryXP
             if let newLevel = currentProgress.addXP(masteryXP) {
@@ -296,24 +298,43 @@ final class HomeViewModel {
                 word: current.word,
                 language: current.sourceLanguage,
                 difficulty: current.difficultyLevel,
-                timesViewed: reviewResult.snapshot.reviewCount
+                timesViewed: viewResult.snapshot.reviewCount
             )
         }
 
         return totalXPEarned
     }
 
-    private func presentResolvedWord(id wordID: String, modelContext: ModelContext, markAsShown: Bool) {
-        guard let payload = learnService.makePayload(wordID: wordID, statesByID: stateByID) else { return }
+    @discardableResult
+    private func presentResolvedWord(
+        id wordID: String,
+        modelContext: ModelContext,
+        markAsShown: Bool,
+        awardXPForConsumption: Bool = false,
+        onAchievement: (String) -> Void = { _ in }
+    ) -> Int {
+        var totalXPEarned = 0
 
         if markAsShown {
             currentProgress.wordOfTheDayID = wordID
-            currentProgress.wordOfTheDayDate = Date()
-            currentProgress.recordWordShownToday(wordID)
+            let now = Date()
+            currentProgress.wordOfTheDayDate = now
+            let wasNewlyShownToday = currentProgress.recordWordShownToday(wordID, now: now)
+
+            if awardXPForConsumption && wasNewlyShownToday,
+               let payload = learnService.makePayload(wordID: wordID, statesByID: stateByID) {
+                totalXPEarned = consumeWord(payload, modelContext: modelContext, onAchievement: onAchievement)
+            }
+        }
+
+        guard let payload = learnService.makePayload(wordID: wordID, statesByID: stateByID) else {
+            persistChangesIfNeeded(modelContext: modelContext)
+            return totalXPEarned
         }
 
         todaysWord = payload
         persistChangesIfNeeded(modelContext: modelContext)
+        return totalXPEarned
     }
 
     private func persistChangesIfNeeded(modelContext: ModelContext) {

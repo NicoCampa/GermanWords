@@ -174,7 +174,7 @@ struct BrowseWordsView: View {
             HStack(spacing: 8) {
                 FilterChip(
                     title: L10n.Browse.favorites,
-                    icon: "star.fill",
+                    icon: "heart.fill",
                     isSelected: showOnlyFavorites,
                     action: { showOnlyFavorites.toggle() }
                 )
@@ -250,9 +250,9 @@ struct BrowseWordsView: View {
                         HapticFeedback.light()
                         toggleFavorite(for: row)
                     } label: {
-                        Image(systemName: row.isFavorite ? "star.fill" : "star")
+                        Image(systemName: row.isFavorite ? "heart.fill" : "heart")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(row.isFavorite ? DesignTokens.color.gold : DesignTokens.color.textMuted)
+                            .foregroundStyle(row.isFavorite ? DesignTokens.color.difficultyHard : DesignTokens.color.textMuted)
                     }
                     .accessibilityLabel(row.isFavorite ? L10n.WordDetail.removeFromFavorites : L10n.WordDetail.addToFavorites)
                 }

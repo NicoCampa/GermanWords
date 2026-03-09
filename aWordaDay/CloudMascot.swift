@@ -1,17 +1,55 @@
 import SwiftUI
+import UIKit
 
 struct SharedCloudMascot: View {
     let scale: CGFloat
+    @State private var cycleOffset = Double.random(in: 0..<SharedCloudMascot.animationCycleDuration)
+
+    private static let assetFrameNames = [
+        "wordy",
+        "frame2",
+        "frame3",
+        "frame4",
+        "frame5",
+        "frame6"
+    ]
+    private static let frames = loadedFrames()
+    private static let frameDuration = 0.14
+    private static let idleDuration = 4.5
+    private static let animationCycleDuration = (Double(assetFrameNames.count) * frameDuration) + idleDuration
 
     var body: some View {
-        Image("wordy")
-            .resizable()
-            .interpolation(.medium)
-            .antialiased(true)
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 100 * scale, height: 100 * scale)
-            .designSystemShadow(DesignTokens.shadow.light)
-            .accessibilityLabel("Worty mascot")
+        TimelineView(.periodic(from: .now, by: Self.frameDuration)) { context in
+            Image(uiImage: Self.frames[frameIndex(for: context.date)])
+                .resizable()
+                .interpolation(.medium)
+                .antialiased(true)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 100 * scale, height: 100 * scale)
+                .designSystemShadow(DesignTokens.shadow.light)
+                .accessibilityLabel("Wolke mascot")
+        }
+    }
+
+    private func frameIndex(for date: Date) -> Int {
+        let cycleTime = (date.timeIntervalSinceReferenceDate + cycleOffset)
+            .truncatingRemainder(dividingBy: Self.animationCycleDuration)
+
+        if cycleTime >= Self.idleDuration {
+            let animationTime = cycleTime - Self.idleDuration
+            let animatedFrame = Int(animationTime / Self.frameDuration)
+            return min(animatedFrame, Self.frames.count - 1)
+        }
+
+        return 0
+    }
+
+    private static func loadedFrames() -> [UIImage] {
+        let assetImages = assetFrameNames.compactMap(UIImage.init(named:))
+        if !assetImages.isEmpty {
+            return assetImages
+        }
+        return [UIImage()]
     }
 }
 

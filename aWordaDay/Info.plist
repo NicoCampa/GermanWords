@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Wordy Quest</string>
+	<string>Wolke</string>
 	<key>GEMINI_API_KEY</key>
 	<string>$(GEMINI_API_KEY)</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Worty needs access to save app icon images to your Photos library.</string>
+	<string>Wolke needs access to save app icon images to your Photos library.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

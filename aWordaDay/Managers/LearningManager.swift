@@ -66,23 +66,9 @@ class LearningManager: LearningManagerProtocol {
         from words: [CatalogWord],
         statesByID: [String: UserWordStateSnapshot],
         language: String,
-        lastWordID: String? = nil,
-        preferredDifficulty: Int? = nil,
-        allowMixed: Bool = false
+        lastWordID: String? = nil
     ) -> CatalogWord? {
-        var filteredWords: [CatalogWord] = []
-        filteredWords.reserveCapacity(words.count)
-
-        for word in words {
-            guard word.sourceLanguage == language else { continue }
-            if let difficulty = preferredDifficulty,
-               !allowMixed,
-               let selectedBucket = DifficultyBucket(selection: difficulty),
-               word.difficultyBucket != selectedBucket {
-                continue
-            }
-            filteredWords.append(word)
-        }
+        let filteredWords = words.filter { $0.sourceLanguage == language }
 
         if filteredWords.isEmpty {
             return nil
@@ -101,17 +87,11 @@ class LearningManager: LearningManagerProtocol {
 
         let wordsToChooseFrom = nonRecentWords.isEmpty ? filteredWords : nonRecentWords
 
-        var dueWords: [CatalogWord] = []
         var newWords: [CatalogWord] = []
         var lessViewedWords: [CatalogWord] = []
 
         for word in wordsToChooseFrom {
             let state = statesByID[word.id]
-
-            if state?.isDueForReview == true {
-                dueWords.append(word)
-                continue
-            }
 
             if (state?.reviewCount ?? 0) == 0 {
                 newWords.append(word)
@@ -121,18 +101,6 @@ class LearningManager: LearningManagerProtocol {
             if (state?.reviewCount ?? 0) < 3 {
                 lessViewedWords.append(word)
             }
-        }
-
-        if !dueWords.isEmpty {
-            return selectFromCandidates(
-                dueWords,
-                sortedBy: { lhs, rhs in
-                    let lhsDue = statesByID[lhs.id]?.srsDueDate ?? .distantFuture
-                    let rhsDue = statesByID[rhs.id]?.srsDueDate ?? .distantFuture
-                    return lhsDue < rhsDue
-                },
-                poolSize: 3
-            )
         }
 
         if !newWords.isEmpty {

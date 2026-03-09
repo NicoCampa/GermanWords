@@ -45,6 +45,12 @@ struct UserWordReviewResult {
     let becameLearned: Bool
 }
 
+struct UserWordViewResult {
+    let snapshot: UserWordStateSnapshot
+    let becameViewed: Bool
+    let becameLearned: Bool
+}
+
 @Model
 final class UserWordState {
     @Attribute(.unique) var wordID: String
@@ -89,6 +95,31 @@ final class UserWordState {
     var isDueForReview: Bool {
         guard let srsDueDate else { return false }
         return srsDueDate <= Date()
+    }
+
+    func applyView(viewDate: Date = Date()) -> UserWordViewResult {
+        let wasViewed = reviewCount > 0
+        let wasLearned = isLearned
+
+        reviewCount += 1
+        lastReviewedAt = viewDate
+        if firstReviewedAt == nil {
+            firstReviewedAt = viewDate
+        }
+
+        // Clear leftover spaced-repetition fields; the active flow is view-based.
+        srsEaseFactor = nil
+        srsIntervalDays = nil
+        srsRepetitions = nil
+        srsDueDate = nil
+
+        isLearned = reviewCount >= 3
+
+        return UserWordViewResult(
+            snapshot: snapshot,
+            becameViewed: !wasViewed && reviewCount > 0,
+            becameLearned: !wasLearned && isLearned
+        )
     }
 
     func applyReview(quality rawQuality: Int, reviewDate: Date = Date()) -> UserWordReviewResult {
