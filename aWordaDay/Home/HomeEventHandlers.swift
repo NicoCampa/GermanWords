@@ -43,9 +43,17 @@ extension ContentView {
 
     func triggerXPGainAnimation(amount: Int) {
         guard amount > 0 else { return }
+
+        pendingXPAnimationWordCount += 1
+        pendingXPAnimationAmount += amount
+
+        guard pendingXPAnimationWordCount >= 3 else { return }
+
         xpHideWorkItem?.cancel()
-        xpGained = amount
+        xpGained = pendingXPAnimationAmount
         xpAnimationToken = UUID()
+        pendingXPAnimationWordCount = 0
+        pendingXPAnimationAmount = 0
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
             showingXPAnimation = true
         }

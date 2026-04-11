@@ -35,7 +35,7 @@ struct XPPopupView: View {
         .scaleEffect(scale)
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
-                offset = -80
+                offset = -48
                 scale = 1.0
             }
             withAnimation(.easeOut(duration: 0.4).delay(0.6)) {

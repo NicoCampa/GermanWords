@@ -248,11 +248,7 @@ enum L10n {
     // MARK: - Onboarding
     enum Onboarding {
         static var welcomeTitle: String { zh ? "欢迎来到 Wolke" : "Welcome to Wolke" }
-        static var welcomeSubtitle: String { zh ? "一次学习一个德语单词，配有清晰翻译、例句和注释。" : "Learn German one word at a time with clear translations, examples, and notes." }
-        static var examplesAndNotes: String { zh ? "例句与注释" : "Examples and notes" }
-        static var examplesAndNotesDesc: String { zh ? "每张单词卡都会展示这个词在真实语境中的用法。" : "Each word card helps you see how a word is actually used." }
-        static var doubleTapToSave: String { zh ? "双击即可收藏" : "Double-tap to save" }
-        static var doubleTapToSaveDesc: String { zh ? "双击任意单词卡即可收藏，红心动画会立即确认。" : "Double-tap any word card to favorite it. A floating red heart confirms it right away." }
+        static var welcomeSubtitle: String { zh ? "每天花一点时间，慢慢建立你的德语词汇量。" : "Build your German vocabulary a little at a time, every day." }
         static var howItWorks: String { zh ? "Wolke 如何工作" : "How Wolke works" }
         static var howItWorksSubtitle: String { zh ? "保持简单，按自己的节奏每天回来一点点。" : "Keep it simple and come back at your own pace." }
         static var oneWordAtATime: String { zh ? "一次一个单词" : "One word at a time" }

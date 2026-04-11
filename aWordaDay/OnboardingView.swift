@@ -73,121 +73,77 @@ struct OnboardingWelcomePage: View {
     let onContinue: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: DesignTokens.spacing.xl) {
-                // Mascot
-                SharedCloudMascot(scale: mascotScale)
-                    .designSystemShadow(DesignTokens.shadow.medium)
-                    .onAppear {
-                        withAnimation(.spring(response: 1.2, dampingFraction: 0.6)) {
-                            mascotScale = 1.3
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+
+                    VStack(spacing: DesignTokens.spacing.xl) {
+                        SharedCloudMascot(scale: mascotScale)
+                            .designSystemShadow(DesignTokens.shadow.medium)
+                            .onAppear {
+                                withAnimation(.spring(response: 1.2, dampingFraction: 0.6)) {
+                                    mascotScale = 1.3
+                                }
+                            }
+
+                        VStack(spacing: 10) {
+                            Text(L10n.Onboarding.welcomeTitle)
+                                .font(DesignTokens.typography.largeTitle(weight: .heavy))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [
+                                            DesignTokens.color.textPrimary,
+                                            DesignTokens.color.headingPrimary
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .multilineTextAlignment(.center)
+
+                            Text(L10n.Onboarding.welcomeSubtitle)
+                                .font(DesignTokens.typography.body(weight: .medium))
+                                .foregroundStyle(DesignTokens.color.textLight)
+                                .multilineTextAlignment(.center)
                         }
-                    }
 
-                // Title
-                VStack(spacing: 10) {
-                    Text(L10n.Onboarding.welcomeTitle)
-                        .font(DesignTokens.typography.largeTitle(weight: .heavy))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    DesignTokens.color.textPrimary,
-                                    DesignTokens.color.headingPrimary
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                        Button(action: {
+                            initializeLearningPreferences()
+                            onContinue()
+                        }) {
+                            HStack(spacing: 10) {
+                                Text(L10n.Common.continueButton)
+                                    .font(DesignTokens.typography.headline(weight: .bold))
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 16, weight: .bold))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, DesignTokens.spacing.lg)
+                            .background(
+                                LinearGradient(
+                                    colors: [
+                                        DesignTokens.color.info,
+                                        DesignTokens.color.primary
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous))
+                                .shadow(color: DesignTokens.color.primary.opacity(0.3), radius: 12, x: 0, y: 6)
                             )
-                        )
-                        .multilineTextAlignment(.center)
-
-                    Text(L10n.Onboarding.welcomeSubtitle)
-                        .font(DesignTokens.typography.body(weight: .medium))
-                        .foregroundStyle(DesignTokens.color.textLight)
-                        .multilineTextAlignment(.center)
-                }
-
-                VStack(spacing: 14) {
-                    onboardingCallout(
-                        icon: "text.book.closed.fill",
-                        tint: DesignTokens.color.primary,
-                        title: L10n.Onboarding.examplesAndNotes,
-                        detail: L10n.Onboarding.examplesAndNotesDesc
-                    )
-
-                    onboardingCallout(
-                        icon: "heart.fill",
-                        tint: DesignTokens.color.difficultyHard,
-                        title: L10n.Onboarding.doubleTapToSave,
-                        detail: L10n.Onboarding.doubleTapToSaveDesc
-                    )
-                }
-                .padding(.horizontal, DesignTokens.spacing.lg2)
-
-                // Continue button
-                Button(action: {
-                    initializeLearningPreferences()
-                    onContinue()
-                }) {
-                    HStack(spacing: 10) {
-                        Text(L10n.Common.continueButton)
-                            .font(DesignTokens.typography.headline(weight: .bold))
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 16, weight: .bold))
+                        }
+                        .padding(.horizontal, DesignTokens.spacing.lg2)
                     }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, DesignTokens.spacing.lg)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                DesignTokens.color.info,
-                                DesignTokens.color.primary
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg, style: .continuous))
-                        .shadow(color: DesignTokens.color.primary.opacity(0.3), radius: 12, x: 0, y: 6)
-                    )
+
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, DesignTokens.spacing.lg2)
+                .frame(minHeight: geometry.size.height - DesignTokens.spacing.xl)
+                .padding(.top, DesignTokens.spacing.md)
                 .padding(.bottom, 40)
             }
-            .padding(.top, DesignTokens.spacing.md)
         }
-    }
-
-    private func onboardingCallout(icon: String, tint: Color, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: DesignTokens.spacing.md) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 36, height: 36)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(tint.opacity(0.12))
-                )
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(DesignTokens.typography.callout(weight: .bold))
-                    .foregroundStyle(DesignTokens.color.textPrimary)
-
-                Text(detail)
-                    .font(DesignTokens.typography.caption(weight: .medium))
-                    .foregroundStyle(DesignTokens.color.textLight)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, DesignTokens.spacing.lg)
-        .padding(.vertical, DesignTokens.spacing.lg)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.cornerRadius.lg)
-                .fill(DesignTokens.color.sectionBackground)
-                .designSystemShadow(DesignTokens.shadow.light)
-        )
     }
 
     private func initializeLearningPreferences() {

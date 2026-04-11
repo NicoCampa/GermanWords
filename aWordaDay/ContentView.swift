@@ -26,6 +26,8 @@ struct ContentView: View {
     @State var xpGained = 0
     @State var xpAnimationToken = UUID()
     @State var xpHideWorkItem: DispatchWorkItem?
+    @State var pendingXPAnimationWordCount = 0
+    @State var pendingXPAnimationAmount = 0
     // Consolidated sheet state
     @State var activeSheet: HomeSheet?
     @State private var hasInitializedHomeState = false
@@ -173,6 +175,7 @@ struct ContentView: View {
                             insertion: .scale.combined(with: .opacity),
                             removal: .opacity
                         ))
+                        .offset(y: 180)
                 }
             }
             .toolbar {
